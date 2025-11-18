@@ -1,5 +1,7 @@
 # Laravel AI Translator Package - Development Plan
 
+**Gemini key** AIzaSyDgMy_AdttbZYbVwTRqUyY9v3sn6jYv_f0
+
 ## Package Information
 - **Name:** masum/laravel-ai-translator
 - **Description:** AI-powered Laravel translation package with Gemini API integration, smart caching, and automatic translation management
