@@ -1,0 +1,55 @@
+{
+    "name": "masum/laravel-ai-translator",
+    "description": "AI-powered Laravel translation package with Gemini API integration, smart caching, and automatic translation management",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "translation",
+        "i18n",
+        "localization",
+        "ai",
+        "gemini",
+        "multilingual"
+    ],
+    "authors": [
+        {
+            "name": "Masum",
+            "email": "your-email@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/database": "^11.0|^12.0",
+        "illuminate/cache": "^11.0|^12.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "phpunit/phpunit": "^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Masum\\AiTranslator\\": "src/"
+        },
+        "files": [
+            "src/Helpers/translation_helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Masum\\AiTranslator\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Masum\\AiTranslator\\AiTranslatorServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
