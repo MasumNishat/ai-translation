@@ -2,12 +2,15 @@
 
 namespace Masum\AiTranslator\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
 class Language extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'code',
         'name',
@@ -25,6 +28,14 @@ class Language extends Model
             'is_active' => 'boolean',
             'is_default' => 'boolean',
         ];
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Masum\AiTranslator\Database\Factories\LanguageFactory::new();
     }
 
     /**

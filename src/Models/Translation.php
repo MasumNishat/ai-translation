@@ -2,6 +2,7 @@
 
 namespace Masum\AiTranslator\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 
 class Translation extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'language_id',
         'group',
@@ -25,6 +27,14 @@ class Translation extends Model
             'is_active' => 'boolean',
             'is_auto_translated' => 'boolean',
         ];
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Masum\AiTranslator\Database\Factories\TranslationFactory::new();
     }
 
     /**
