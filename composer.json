@@ -44,7 +44,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Masum\\AiTranslator\\Tests\\": "tests/"
+            "Masum\\AiTranslator\\Tests\\": "tests/",
+            "Masum\\AiTranslator\\Database\\Factories\\": "database/factories/"
         }
     },
     "extra": {

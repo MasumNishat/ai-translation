@@ -96,7 +96,8 @@ test('factory state: for language', function () {
 test('factory state: missing', function () {
     $translation = Translation::factory()->missing()->create();
 
-    expect($translation->value)->toBeNull();
+    expect($translation->value)->toBe('')
+        ->and($translation->is_active)->toBeFalse();
 })->group('unit', 'models', 'translation');
 
 test('factory state: auth', function () {

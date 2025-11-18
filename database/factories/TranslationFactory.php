@@ -32,6 +32,8 @@ class TranslationFactory extends Factory
             'value' => $this->faker->sentence(),
             'language_id' => Language::factory(),
             'group' => $group,
+            'is_active' => true,
+            'is_auto_translated' => false,
         ];
     }
 
@@ -81,7 +83,8 @@ class TranslationFactory extends Factory
     public function missing(): static
     {
         return $this->state(fn (array $attributes) => [
-            'value' => null,
+            'value' => '',
+            'is_active' => false,
         ]);
     }
 

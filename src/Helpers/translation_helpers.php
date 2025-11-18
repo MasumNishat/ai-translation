@@ -289,8 +289,15 @@ if (!function_exists('ai_trans')) {
      */
     function ai_trans(string $key, array $replace = [], ?string $locale = null): string
     {
-        $service = app(TranslationService::class);
-        return $service->get($key, $locale ?? app()->getLocale(), $replace);
+        $locale = $locale ?? app()->getLocale();
+        $translation = Translation::get($key, $locale);
+
+        // Apply replacements if any
+        foreach ($replace as $key => $value) {
+            $translation = str_replace([':'.$key, '{'.$key.'}', '{{'.$key.'}}'], $value, $translation);
+        }
+
+        return $translation;
     }
 }
 
@@ -306,14 +313,20 @@ if (!function_exists('ai_trans_choice')) {
      */
     function ai_trans_choice(string $key, int $count, array $replace = [], ?string $locale = null): string
     {
-        $service = app(TranslationService::class);
         $locale = $locale ?? app()->getLocale();
 
         // Simple pluralization logic
         $replace['count'] = $count;
         $pluralKey = $count === 1 ? "{$key}.singular" : "{$key}.plural";
 
-        return $service->get($pluralKey, $locale, $replace);
+        $translation = Translation::get($pluralKey, $locale);
+
+        // Apply replacements
+        foreach ($replace as $replaceKey => $value) {
+            $translation = str_replace([':'.$replaceKey, '{'.$replaceKey.'}', '{{'.$replaceKey.'}}'], $value, $translation);
+        }
+
+        return $translation;
     }
 }
 
