@@ -8,7 +8,7 @@ class AutoTranslateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can(config('ai-translator.permissions.auto_translate', 'auto-translate')) ?? false;
+        if (!$this->user()) { return true; } return $this->user()->can(config("ai-translator.permissions.manage_translations", "manage-translations"));
     }
 
     public function rules(): array
