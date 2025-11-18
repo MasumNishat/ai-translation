@@ -277,3 +277,206 @@ if (!function_exists('trans_groups')) {
         return Translation::getAvailableGroups();
     }
 }
+
+if (!function_exists('ai_trans')) {
+    /**
+     * Translate the given key with AI fallback (alias for __t).
+     *
+     * @param  string  $key  Translation key
+     * @param  array  $replace  Replacement values
+     * @param  string|null  $locale  Language code
+     * @return string
+     */
+    function ai_trans(string $key, array $replace = [], ?string $locale = null): string
+    {
+        $service = app(TranslationService::class);
+        return $service->get($key, $locale ?? app()->getLocale(), $replace);
+    }
+}
+
+if (!function_exists('ai_trans_choice')) {
+    /**
+     * Translate with pluralization.
+     *
+     * @param  string  $key  Translation key
+     * @param  int  $count  Count for pluralization
+     * @param  array  $replace  Replacement values
+     * @param  string|null  $locale  Language code
+     * @return string
+     */
+    function ai_trans_choice(string $key, int $count, array $replace = [], ?string $locale = null): string
+    {
+        $service = app(TranslationService::class);
+        $locale = $locale ?? app()->getLocale();
+
+        // Simple pluralization logic
+        $replace['count'] = $count;
+        $pluralKey = $count === 1 ? "{$key}.singular" : "{$key}.plural";
+
+        return $service->get($pluralKey, $locale, $replace);
+    }
+}
+
+if (!function_exists('ai_has_trans')) {
+    /**
+     * Check if translation exists.
+     *
+     * @param  string  $key  Translation key
+     * @param  string|null  $locale  Language code
+     * @return bool
+     */
+    function ai_has_trans(string $key, ?string $locale = null): bool
+    {
+        $locale = $locale ?? app()->getLocale();
+        $language = Language::where('code', $locale)->first();
+
+        if (!$language) {
+            return false;
+        }
+
+        return Translation::where('key', $key)
+            ->where('language_id', $language->id)
+            ->exists();
+    }
+}
+
+if (!function_exists('ai_trans_array')) {
+    /**
+     * Get translations for multiple keys.
+     *
+     * @param  array  $keys  Translation keys
+     * @param  string|null  $locale  Language code
+     * @return array
+     */
+    function ai_trans_array(array $keys, ?string $locale = null): array
+    {
+        $locale = $locale ?? app()->getLocale();
+        $language = Language::where('code', $locale)->first();
+
+        if (!$language) {
+            return array_fill_keys($keys, '');
+        }
+
+        $translations = Translation::where('language_id', $language->id)
+            ->whereIn('key', $keys)
+            ->pluck('value', 'key')
+            ->toArray();
+
+        return array_merge(array_fill_keys($keys, ''), $translations);
+    }
+}
+
+if (!function_exists('ai_trans_group')) {
+    /**
+     * Get all translations for a group.
+     *
+     * @param  string  $group  Translation group
+     * @param  string|null  $locale  Language code
+     * @return array
+     */
+    function ai_trans_group(string $group, ?string $locale = null): array
+    {
+        $locale = $locale ?? app()->getLocale();
+        $language = Language::where('code', $locale)->first();
+
+        if (!$language) {
+            return [];
+        }
+
+        return Translation::where('language_id', $language->id)
+            ->where('group', $group)
+            ->pluck('value', 'key')
+            ->toArray();
+    }
+}
+
+if (!function_exists('ai_languages')) {
+    /**
+     * Get all active languages.
+     *
+     * @param  bool  $activeOnly  Only active languages
+     * @return \Illuminate\Support\Collection
+     */
+    function ai_languages(bool $activeOnly = true): \Illuminate\Support\Collection
+    {
+        $query = Language::query();
+
+        if ($activeOnly) {
+            $query->where('is_active', true);
+        }
+
+        return $query->get();
+    }
+}
+
+if (!function_exists('ai_default_language')) {
+    /**
+     * Get default language.
+     *
+     * @return Language|null
+     */
+    function ai_default_language(): ?Language
+    {
+        return Language::where('is_default', true)->first();
+    }
+}
+
+if (!function_exists('ai_current_language')) {
+    /**
+     * Get current language based on locale.
+     *
+     * @return Language|null
+     */
+    function ai_current_language(): ?Language
+    {
+        $locale = app()->getLocale();
+        return Language::where('code', $locale)->first();
+    }
+}
+
+if (!function_exists('ai_set_language')) {
+    /**
+     * Set application locale.
+     *
+     * @param  string  $languageCode  Language code
+     * @return bool
+     */
+    function ai_set_language(string $languageCode): bool
+    {
+        $language = Language::where('code', $languageCode)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$language) {
+            return false;
+        }
+
+        app()->setLocale($languageCode);
+        session(['language' => $languageCode]);
+
+        return true;
+    }
+}
+
+if (!function_exists('ai_trans_missing')) {
+    /**
+     * Get count of missing translations for a language.
+     *
+     * @param  string  $languageCode  Language code
+     * @return int
+     */
+    function ai_trans_missing(string $languageCode): int
+    {
+        $defaultLanguage = Language::where('is_default', true)->first();
+        $targetLanguage = Language::where('code', $languageCode)->first();
+
+        if (!$defaultLanguage || !$targetLanguage) {
+            return 0;
+        }
+
+        $defaultCount = Translation::where('language_id', $defaultLanguage->id)->count();
+        $targetCount = Translation::where('language_id', $targetLanguage->id)->count();
+
+        return max(0, $defaultCount - $targetCount);
+    }
+}
