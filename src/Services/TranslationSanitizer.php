@@ -26,6 +26,7 @@ class TranslationSanitizer
      */
     protected array $dangerousPatterns = [
         '/<script\b[^>]*>(.*?)<\/script>/is',
+        '/href\s*=\s*["\']?javascript:[^"\'>\s]*/i', // Remove entire javascript: href values
         '/javascript:/i',
         '/on\w+\s*=/i', // onclick, onload, etc.
         '/<iframe\b[^>]*>(.*?)<\/iframe>/is',
@@ -55,17 +56,19 @@ class TranslationSanitizer
      */
     protected function sanitizeStrict(string $value): string
     {
-        // Remove all HTML tags
-        $value = strip_tags($value);
+        // First remove dangerous patterns (this will remove script content too)
+        $value = $this->removeDangerousPatterns($value);
 
-        // Decode HTML entities to prevent double encoding
-        $value = html_entity_decode($value, ENT_QUOTES, 'UTF-8');
-
-        // Encode special characters
-        $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        // Remove all HTML tags (require at least one character to avoid removing bare <>)
+        $value = preg_replace('/<[^>]+>/', '', $value);
 
         // Trim whitespace
-        return trim($value);
+        $value = trim($value);
+
+        // Encode all special characters (including < > & " ')
+        $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+
+        return $value;
     }
 
     /**

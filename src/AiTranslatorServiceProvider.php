@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Masum\AiTranslator\Gates\TranslationGates;
 use Masum\AiTranslator\Http\Middleware\SetLocale;
 use Masum\AiTranslator\Services\GeminiTranslationService;
+use Masum\AiTranslator\Services\TranslationSanitizer;
 use Masum\AiTranslator\Services\TranslationService;
 
 class AiTranslatorServiceProvider extends ServiceProvider
@@ -32,6 +33,10 @@ class AiTranslatorServiceProvider extends ServiceProvider
             return new TranslationService(
                 $app->make(GeminiTranslationService::class)
             );
+        });
+
+        $this->app->singleton(TranslationSanitizer::class, function ($app) {
+            return new TranslationSanitizer();
         });
     }
 
