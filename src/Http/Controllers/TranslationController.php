@@ -204,6 +204,39 @@ class TranslationController extends Controller
     {
         $validated = $request->validated();
 
+        // Check if queueing is enabled and user didn't request sync processing
+        $useQueue = config('ai-translator.queue.enabled', true)
+            && !$request->boolean('sync', false);
+
+        if ($useQueue) {
+            try {
+                // Dispatch translation job to queue
+                $job = \Masum\AiTranslator\Jobs\TranslateJob::dispatch(
+                    $validated['key'],
+                    $validated['value'],
+                    $validated['source_language'],
+                    $validated['target_languages'],
+                    $validated['group'] ?? null,
+                    $request->user()?->id
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Translation queued successfully. Processing in background.',
+                    'data' => [
+                        'status' => 'queued',
+                        'job_id' => $job->id ?? null,
+                    ],
+                ], 202); // 202 Accepted
+            } catch (\Exception $e) {
+                // If queueing fails, fall back to sync processing
+                \Log::warning('Failed to queue translation, falling back to sync', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Synchronous processing (either requested or fallback)
         try {
             $translations = $this->translationService->autoTranslate(
                 key: $validated['key'],
@@ -238,12 +271,47 @@ class TranslationController extends Controller
             'translations' => ['required', 'array', 'min:1'],
             'translations.*.key' => ['required', 'string'],
             'translations.*.value' => ['required', 'string'],
+            'translations.*.group' => ['nullable', 'string'],
             'source_language' => ['required', 'string', 'exists:languages,code'],
             'target_languages' => ['required', 'array', 'min:1'],
             'target_languages.*' => ['string', 'exists:languages,code'],
             'group' => ['nullable', 'string'],
         ]);
 
+        // Check if queueing is enabled and batching is supported
+        $useQueue = config('ai-translator.queue.enabled', true)
+            && config('ai-translator.queue.batch_enabled', true)
+            && !$request->boolean('sync', false);
+
+        if ($useQueue && count($validated['translations']) > 1) {
+            try {
+                // Dispatch batch translation job
+                $job = \Masum\AiTranslator\Jobs\BatchTranslateJob::dispatch(
+                    $validated['translations'],
+                    $validated['source_language'],
+                    $validated['target_languages'],
+                    $request->user()?->id,
+                    ['group' => $validated['group'] ?? null]
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Batch translation queued successfully. Processing in background.',
+                    'data' => [
+                        'status' => 'queued',
+                        'job_id' => $job->id ?? null,
+                        'count' => count($validated['translations']),
+                    ],
+                ], 202); // 202 Accepted
+            } catch (\Exception $e) {
+                // If queueing fails, fall back to sync processing
+                \Log::warning('Failed to queue batch translation, falling back to sync', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Synchronous processing (either requested or fallback)
         try {
             $keyValues = collect($validated['translations'])->pluck('value', 'key')->toArray();
 
