@@ -88,6 +88,7 @@ class AiTranslatorServiceProvider extends ServiceProvider
 
         // Register middleware
         $router->aliasMiddleware('translator.locale', SetLocale::class);
+        $router->aliasMiddleware('translator.ratelimit', \Masum\AiTranslator\Http\Middleware\RateLimitTranslations::class);
 
         // Optionally auto-append to web and api middleware groups
         // Users can manually add it if they prefer

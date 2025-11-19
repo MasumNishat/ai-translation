@@ -187,4 +187,39 @@ return [
         'track_ip' => false,
         'track_user_agent' => false,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | Configure rate limits for API endpoints to prevent abuse.
+    | Different limiters can be applied to different endpoint groups.
+    |
+    */
+    'rate_limiting' => [
+        // General translation API requests
+        'translations' => [
+            'max_attempts' => env('TRANSLATOR_RATE_LIMIT', 60),
+            'decay_seconds' => 60, // 1 minute
+        ],
+
+        // Auto-translation requests (more expensive, stricter limit)
+        'auto_translate' => [
+            'max_attempts' => env('TRANSLATOR_AI_RATE_LIMIT', 10),
+            'decay_seconds' => 60, // 1 minute
+        ],
+
+        // Import/Export operations (bulk operations, very strict)
+        'bulk' => [
+            'max_attempts' => env('TRANSLATOR_BULK_RATE_LIMIT', 5),
+            'decay_seconds' => 60, // 1 minute
+        ],
+
+        // Language management
+        'languages' => [
+            'max_attempts' => env('TRANSLATOR_LANGUAGE_RATE_LIMIT', 30),
+            'decay_seconds' => 60, // 1 minute
+        ],
+    ],
 ];
