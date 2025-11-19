@@ -16,7 +16,12 @@ class RateLimitTranslations
      */
     public function handle(Request $request, Closure $next, string $limiter = 'translations'): Response
     {
-        $key = $this->resolveRequestSignature($request);
+        // Skip rate limiting if disabled
+        if (!config('ai-translator.rate_limiting.enabled', true)) {
+            return $next($request);
+        }
+
+        $key = $this->resolveRequestSignature($request, $limiter);
 
         if (RateLimiter::tooManyAttempts($key, $this->maxAttempts($limiter))) {
             return $this->buildResponse($key, $limiter);
@@ -36,13 +41,13 @@ class RateLimitTranslations
     /**
      * Resolve request signature
      */
-    protected function resolveRequestSignature(Request $request): string
+    protected function resolveRequestSignature(Request $request, string $limiter): string
     {
         if ($user = $request->user()) {
-            return sha1('translator_' . $user->id . '|' . $request->ip());
+            return sha1("translator_{$limiter}_" . $user->id . '|' . $request->ip());
         }
 
-        return sha1('translator_guest|' . $request->ip());
+        return sha1("translator_{$limiter}_guest|" . $request->ip());
     }
 
     /**

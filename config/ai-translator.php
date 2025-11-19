@@ -264,6 +264,9 @@ return [
     |
     */
     'rate_limiting' => [
+        // Enable/disable rate limiting globally
+        'enabled' => env('TRANSLATOR_RATE_LIMIT_ENABLED', true),
+
         // General translation API requests
         'translations' => [
             'max_attempts' => env('TRANSLATOR_RATE_LIMIT', 60),

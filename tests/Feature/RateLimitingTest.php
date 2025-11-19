@@ -6,12 +6,16 @@ use Illuminate\Http\Request;
 use function Pest\Laravel\{getJson, postJson};
 
 beforeEach(function () {
-    RateLimiter::clear('translator_guest|' . sha1('127.0.0.1'));
+    // Clear rate limiters for all limiter types
+    $limiters = ['translations', 'auto_translate', 'bulk', 'languages'];
+    foreach ($limiters as $limiter) {
+        RateLimiter::clear(sha1("translator_{$limiter}_guest|127.0.0.1"));
+    }
 });
 
 describe('Rate Limiting Middleware', function () {
     test('allows requests within rate limit', function () {
-        config(['ai-translator.rate_limiting.translations.max_attempts' => 10]);
+        config(['ai-translator.rate_limiting.languages.max_attempts' => 10]);
 
         for ($i = 0; $i < 5; $i++) {
             $response = getJson('/api/translator/languages');
@@ -21,8 +25,8 @@ describe('Rate Limiting Middleware', function () {
 
     test('blocks requests exceeding rate limit', function () {
         config([
-            'ai-translator.rate_limiting.translations.max_attempts' => 3,
-            'ai-translator.rate_limiting.translations.decay_seconds' => 60,
+            'ai-translator.rate_limiting.languages.max_attempts' => 3,
+            'ai-translator.rate_limiting.languages.decay_seconds' => 60,
         ]);
 
         // Make 3 successful requests
@@ -40,7 +44,7 @@ describe('Rate Limiting Middleware', function () {
     })->group('rate-limiting', 'middleware');
 
     test('adds rate limit headers to response', function () {
-        config(['ai-translator.rate_limiting.translations.max_attempts' => 10]);
+        config(['ai-translator.rate_limiting.languages.max_attempts' => 10]);
 
         $response = getJson('/api/translator/languages');
 
@@ -54,7 +58,7 @@ describe('Rate Limiting Middleware', function () {
 
     test('includes retry-after header when rate limited', function () {
         config([
-            'ai-translator.rate_limiting.translations.max_attempts' => 2,
+            'ai-translator.rate_limiting.languages.max_attempts' => 2,
         ]);
 
         // Exhaust rate limit
@@ -84,8 +88,8 @@ describe('Rate Limiting Middleware', function () {
 
     test('rate limit resets after decay period', function () {
         config([
-            'ai-translator.rate_limiting.translations.max_attempts' => 2,
-            'ai-translator.rate_limiting.translations.decay_seconds' => 1,
+            'ai-translator.rate_limiting.languages.max_attempts' => 2,
+            'ai-translator.rate_limiting.languages.decay_seconds' => 1,
         ]);
 
         // Exhaust rate limit
@@ -103,7 +107,7 @@ describe('Rate Limiting Middleware', function () {
 
     test('rate limit is per IP address for guests', function () {
         config([
-            'ai-translator.rate_limiting.translations.max_attempts' => 2,
+            'ai-translator.rate_limiting.languages.max_attempts' => 2,
         ]);
 
         // Make requests from same IP
@@ -169,10 +173,10 @@ describe('Rate Limiting Middleware Direct Tests', function () {
         $method = $reflection->getMethod('resolveRequestSignature');
         $method->setAccessible(true);
 
-        $signature = $method->invoke($middleware, $request);
+        $signature = $method->invoke($middleware, $request, 'translations');
 
-        expect($signature)->toBeString()
-            ->and($signature)->toContain(sha1('translator_guest|192.168.1.1'));
+        expect($signature)->toBeString();
+        expect($signature)->toBe(sha1('translator_translations_guest|192.168.1.1'));
     })->group('rate-limiting', 'middleware', 'unit');
 
     test('middleware calculates max attempts from config', function () {

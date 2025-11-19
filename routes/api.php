@@ -8,7 +8,7 @@ use Masum\AiTranslator\Http\Controllers\SettingController;
 use Masum\AiTranslator\Http\Controllers\TranslationController;
 
 // Language Management Routes
-Route::prefix('languages')->name('languages.')->group(function () {
+Route::prefix('languages')->name('languages.')->middleware('translator.ratelimit:languages')->group(function () {
     Route::get('/', [LanguageController::class, 'index'])->name('index');
     Route::post('/', [LanguageController::class, 'store'])->name('store');
     Route::get('/{code}', [LanguageController::class, 'show'])->name('show');
@@ -23,7 +23,7 @@ Route::get('/language-to-country/{code}', [LanguageController::class, 'countryIn
 Route::get('/countries', [LanguageController::class, 'allCountries'])->name('countries');
 
 // Translation Management Routes
-Route::prefix('translations')->name('translations.')->group(function () {
+Route::prefix('translations')->name('translations.')->middleware('translator.ratelimit:translations')->group(function () {
     Route::get('/', [TranslationController::class, 'index'])->name('index');
     Route::post('/', [TranslationController::class, 'store'])->name('store');
     Route::get('/groups', [TranslationController::class, 'groups'])->name('groups');
@@ -35,8 +35,10 @@ Route::prefix('translations')->name('translations.')->group(function () {
 });
 
 // AI Translation Routes
-Route::post('/auto-translate', [TranslationController::class, 'autoTranslate'])->name('auto-translate');
-Route::post('/batch-translate', [TranslationController::class, 'batchTranslate'])->name('batch-translate');
+Route::middleware('translator.ratelimit:auto_translate')->group(function () {
+    Route::post('/auto-translate', [TranslationController::class, 'autoTranslate'])->name('auto-translate');
+    Route::post('/batch-translate', [TranslationController::class, 'batchTranslate'])->name('batch-translate');
+});
 
 // Settings Management Routes
 Route::prefix('settings')->name('settings.')->group(function () {
@@ -47,7 +49,7 @@ Route::prefix('settings')->name('settings.')->group(function () {
 });
 
 // Import/Export Routes
-Route::prefix('import-export')->name('import-export.')->group(function () {
+Route::prefix('import-export')->name('import-export.')->middleware('translator.ratelimit:bulk')->group(function () {
     Route::get('/export/all', [ImportExportController::class, 'exportAll'])->name('export.all');
     Route::get('/export/{languageCode}', [ImportExportController::class, 'exportJson'])->name('export.language');
     Route::get('/export/{languageCode}/{group}', [ImportExportController::class, 'exportJsonByGroup'])->name('export.group');
