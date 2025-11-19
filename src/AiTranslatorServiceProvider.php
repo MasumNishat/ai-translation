@@ -70,7 +70,11 @@ class AiTranslatorServiceProvider extends ServiceProvider
 
             // Register commands
             $this->commands([
-                // Commands can be added here
+                \Masum\AiTranslator\Console\Commands\ClearTranslationCacheCommand::class,
+                \Masum\AiTranslator\Console\Commands\TranslationStatsCommand::class,
+                \Masum\AiTranslator\Console\Commands\SyncTranslationsCommand::class,
+                \Masum\AiTranslator\Console\Commands\ExportTranslationsCommand::class,
+                \Masum\AiTranslator\Console\Commands\ImportTranslationsCommand::class,
             ]);
         }
     }
