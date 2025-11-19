@@ -194,13 +194,27 @@ return [
     | Configure how the package detects the current locale.
     | Sources are checked in order: query → header → session → cookie
     |
+    | When a locale is detected from 'header' or 'query', it can be
+    | automatically persisted in a cookie for future requests.
+    |
     */
     'detection' => [
+        // Detection sources in priority order
         'sources' => ['query', 'header', 'session', 'cookie'],
-        'cookie_name' => 'app_locale',
-        'session_key' => 'locale',
+
+        // Query parameter name for locale detection
         'query_param' => 'locale',
+
+        // HTTP header name for locale detection (Accept-Language)
         'header_name' => 'Accept-Language',
+
+        // Session key for storing locale
+        'session_key' => 'locale',
+
+        // Cookie settings
+        'cookie_name' => 'app_locale',
+        'cookie_expires' => 43200, // 30 days (in minutes)
+        'persist_in_cookie' => env('TRANSLATOR_PERSIST_LOCALE', true),
     ],
 
     /*
