@@ -74,6 +74,16 @@ class Translation extends Model
     }
 
     /**
+     * Get the user who translated this.
+     */
+    public function translatedBy(): BelongsTo
+    {
+        $userModel = config('ai-translator.user_model', 'App\\Models\\User');
+
+        return $this->belongsTo($userModel, 'translated_by_user_id');
+    }
+
+    /**
      * Scope to get only active translations.
      */
     public function scopeActive($query)

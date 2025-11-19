@@ -290,7 +290,7 @@ class TranslationService
         bool $activeOnly = true,
         int $perPage = 50
     ) {
-        $builder = Translation::query()->with('language');
+        $builder = Translation::query()->with(['language', 'translatedBy:id,name,email']);
 
         if ($query) {
             $builder->where(function ($q) use ($query) {

@@ -92,7 +92,7 @@ class TranslationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Translation created successfully.',
-            'data' => new TranslationResource($translation->load('language')),
+            'data' => new TranslationResource($translation->load(['language', 'translatedBy:id,name,email'])),
         ], 201);
     }
 
@@ -103,7 +103,7 @@ class TranslationController extends Controller
     {
         $this->authorize(config('ai-translator.permissions.view_translations', 'view-translations'));
 
-        $translation = Translation::with('language')->find($id);
+        $translation = Translation::with(['language', 'translatedBy:id,name,email'])->find($id);
 
         if (!$translation) {
             return response()->json([
@@ -141,7 +141,7 @@ class TranslationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Translation updated successfully.',
-            'data' => new TranslationResource($translation->fresh(['language'])),
+            'data' => new TranslationResource($translation->fresh(['language', 'translatedBy:id,name,email'])),
         ]);
     }
 
