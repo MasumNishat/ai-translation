@@ -7,15 +7,19 @@ AI-powered Laravel translation package with Google Gemini API integration, smart
 - **Smart 3-Tier Translation Retrieval** (Cache → Database → AI)
 - **Automatic AI Translation** using Google Gemini API
 - **Multi-Language Support** with language management
-- **Smart Caching** with automatic invalidation
+- **Smart Caching** with automatic invalidation and cache tagging
+- **Queue System** for asynchronous translation processing
+- **Rate Limiting** to prevent API abuse and ensure fair usage
 - **API Key Priority** (Database → Config → Environment)
 - **Full Audit Trail** for translation changes
 - **RESTful API** for translation management
 - **Laravel Gates** for permission management
 - **Language to Country Mapping** API
-- **Batch Translation** support
+- **Batch Translation** support with job batching
 - **Model Trait** for easy integration
 - **Translation History** tracking
+- **Input Sanitization** for security
+- **Database Indexing** for optimized queries
 
 ## Requirements
 
@@ -49,10 +53,41 @@ php artisan migrate
 Add to your `.env` file:
 
 ```env
+# Gemini AI Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-pro
+GEMINI_TIMEOUT=30
+
+# Cache Configuration
+TRANSLATOR_CACHE_ENABLED=true
 TRANSLATOR_CACHE_TTL=3600
+TRANSLATOR_CACHE_PREFIX=ai_translator
+TRANSLATOR_CACHE_USE_TAGS=true
+
+# Translation Settings
 TRANSLATOR_AUTO_TRANSLATE=true
+
+# Queue Configuration (Optional - for background processing)
+QUEUE_CONNECTION=redis
+TRANSLATOR_QUEUE_ENABLED=true
+TRANSLATOR_QUEUE_CONNECTION=redis
+TRANSLATOR_QUEUE_NAME=translations
+TRANSLATOR_QUEUE_BULK_NAME=translations-bulk
+TRANSLATOR_QUEUE_TIMEOUT=120
+TRANSLATOR_QUEUE_RETRIES=3
+TRANSLATOR_BATCH_ENABLED=true
+TRANSLATOR_BATCH_SIZE=50
+
+# Rate Limiting
+TRANSLATOR_RATE_LIMIT=60
+TRANSLATOR_AI_RATE_LIMIT=10
+TRANSLATOR_BULK_RATE_LIMIT=5
+TRANSLATOR_LANGUAGE_RATE_LIMIT=30
+
+# Security (Optional)
+TRANSLATOR_REQUIRE_AUTH=false
+TRANSLATOR_ALLOW_GUEST=true
+TRANSLATOR_SANITIZATION_ENABLED=true
 ```
 
 ### 5. Add Languages
@@ -123,6 +158,39 @@ return [
         'auto_translate_enabled' => true,
     ],
 
+    // Queue configuration
+    'queue' => [
+        'enabled' => env('TRANSLATOR_QUEUE_ENABLED', true),
+        'name' => env('TRANSLATOR_QUEUE_NAME', 'translations'),
+        'bulk_name' => env('TRANSLATOR_QUEUE_BULK_NAME', 'translations-bulk'),
+        'connection' => env('TRANSLATOR_QUEUE_CONNECTION', null),
+        'timeout' => env('TRANSLATOR_QUEUE_TIMEOUT', 120),
+        'retries' => env('TRANSLATOR_QUEUE_RETRIES', 3),
+        'backoff' => [10, 30, 60],
+        'batch_enabled' => env('TRANSLATOR_BATCH_ENABLED', true),
+        'batch_size' => env('TRANSLATOR_BATCH_SIZE', 50),
+    ],
+
+    // Rate limiting
+    'rate_limiting' => [
+        'translations' => [
+            'max_attempts' => env('TRANSLATOR_RATE_LIMIT', 60),
+            'decay_seconds' => 60,
+        ],
+        'auto_translate' => [
+            'max_attempts' => env('TRANSLATOR_AI_RATE_LIMIT', 10),
+            'decay_seconds' => 60,
+        ],
+        'bulk' => [
+            'max_attempts' => env('TRANSLATOR_BULK_RATE_LIMIT', 5),
+            'decay_seconds' => 60,
+        ],
+        'languages' => [
+            'max_attempts' => env('TRANSLATOR_LANGUAGE_RATE_LIMIT', 30),
+            'decay_seconds' => 60,
+        ],
+    ],
+
     // Permission gates
     'permissions' => [
         'manage_languages' => 'manage-languages',
@@ -138,6 +206,174 @@ return [
         'middleware' => ['api'],
     ],
 ];
+```
+
+## Queue Configuration
+
+The package supports asynchronous translation processing using Laravel's queue system. This improves performance by offloading expensive AI operations to background workers.
+
+### Features
+
+- **Asynchronous Processing** - AI translations run in the background
+- **Automatic Retries** - Failed jobs retry with exponential backoff (10s, 30s, 60s)
+- **Job Batching** - Process multiple translations efficiently
+- **Graceful Fallback** - Falls back to synchronous processing if queue fails
+
+### Setup Queue Workers
+
+#### For Development (Database Queue)
+
+1. Create queue tables:
+```bash
+php artisan queue:table
+php artisan queue:batches-table
+php artisan migrate
+```
+
+2. Start queue worker:
+```bash
+php artisan queue:work --queue=translations-bulk,translations
+```
+
+#### For Production (Redis Recommended)
+
+1. Configure Redis in `.env`:
+```env
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+2. Start queue worker with recommended options:
+```bash
+php artisan queue:work redis \
+    --queue=translations-bulk,translations \
+    --tries=3 \
+    --timeout=120 \
+    --sleep=3 \
+    --max-jobs=1000 \
+    --max-time=3600
+```
+
+#### Supervisor Configuration (Production)
+
+Create `/etc/supervisor/conf.d/ai-translator-worker.conf`:
+
+```ini
+[program:ai-translator-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /path/to/your/artisan queue:work redis --queue=translations-bulk,translations --tries=3 --timeout=120 --max-jobs=1000 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=4
+redirect_stderr=true
+stdout_logfile=/path/to/your/storage/logs/worker.log
+stopwaitsecs=3600
+```
+
+Then reload Supervisor:
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start ai-translator-worker:*
+```
+
+### Queue Management Commands
+
+```bash
+# Monitor queue status
+php artisan queue:monitor translations,translations-bulk
+
+# Restart workers (after code changes)
+php artisan queue:restart
+
+# Retry failed jobs
+php artisan queue:retry all
+
+# Flush failed jobs
+php artisan queue:flush
+```
+
+### Disable Queues (Process Synchronously)
+
+Set in `.env`:
+```env
+TRANSLATOR_QUEUE_ENABLED=false
+```
+
+Or force synchronous processing via API:
+```bash
+POST /api/translator/auto-translate?sync=true
+```
+
+## Rate Limiting
+
+The package implements rate limiting to prevent API abuse and ensure fair usage across different endpoint types.
+
+### Rate Limit Categories
+
+| Category | Default Limit | Description |
+|----------|--------------|-------------|
+| **Translations** | 60/min | General translation API requests |
+| **Auto-Translate** | 10/min | AI-powered translation requests (expensive) |
+| **Bulk Operations** | 5/min | Import/Export and batch operations (very strict) |
+| **Languages** | 30/min | Language management endpoints |
+
+### Environment Configuration
+
+#### Development Settings
+```env
+TRANSLATOR_RATE_LIMIT=1000
+TRANSLATOR_AI_RATE_LIMIT=100
+TRANSLATOR_BULK_RATE_LIMIT=50
+TRANSLATOR_LANGUAGE_RATE_LIMIT=300
+```
+
+#### Production (Low Traffic)
+```env
+TRANSLATOR_RATE_LIMIT=60
+TRANSLATOR_AI_RATE_LIMIT=10
+TRANSLATOR_BULK_RATE_LIMIT=5
+TRANSLATOR_LANGUAGE_RATE_LIMIT=30
+```
+
+#### Production (High Traffic)
+```env
+TRANSLATOR_RATE_LIMIT=120
+TRANSLATOR_AI_RATE_LIMIT=20
+TRANSLATOR_BULK_RATE_LIMIT=10
+TRANSLATOR_LANGUAGE_RATE_LIMIT=60
+```
+
+#### Enterprise
+```env
+TRANSLATOR_RATE_LIMIT=300
+TRANSLATOR_AI_RATE_LIMIT=50
+TRANSLATOR_BULK_RATE_LIMIT=25
+TRANSLATOR_LANGUAGE_RATE_LIMIT=150
+```
+
+### Rate Limit Response
+
+When rate limit is exceeded, API returns:
+
+```json
+{
+  "message": "Too Many Requests",
+  "status": 429,
+  "retry_after": 60
+}
+```
+
+### Monitoring Rate Limits
+
+Check logs for rate limit hits:
+```bash
+tail -f storage/logs/laravel.log | grep "rate_limit"
 ```
 
 ## Usage
