@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Masum\AiTranslator\Http\Controllers\ImportExportController;
 use Masum\AiTranslator\Http\Controllers\LanguageController;
+use Masum\AiTranslator\Http\Controllers\MissingTranslationController;
 use Masum\AiTranslator\Http\Controllers\SettingController;
 use Masum\AiTranslator\Http\Controllers\TranslationController;
 
@@ -42,4 +44,22 @@ Route::prefix('settings')->name('settings.')->group(function () {
     Route::get('/{key}', [SettingController::class, 'show'])->name('show');
     Route::put('/{key}', [SettingController::class, 'update'])->name('update');
     Route::delete('/{key}', [SettingController::class, 'destroy'])->name('destroy');
+});
+
+// Import/Export Routes
+Route::prefix('import-export')->name('import-export.')->group(function () {
+    Route::get('/export/all', [ImportExportController::class, 'exportAll'])->name('export.all');
+    Route::get('/export/{languageCode}', [ImportExportController::class, 'exportJson'])->name('export.language');
+    Route::get('/export/{languageCode}/{group}', [ImportExportController::class, 'exportJsonByGroup'])->name('export.group');
+    Route::post('/import', [ImportExportController::class, 'importJson'])->name('import');
+});
+
+// Missing Translation Detection Routes
+Route::prefix('missing-translations')->name('missing-translations.')->group(function () {
+    Route::get('/report', [MissingTranslationController::class, 'getReport'])->name('report');
+    Route::get('/attention', [MissingTranslationController::class, 'getLanguagesNeedingAttention'])->name('attention');
+    Route::post('/check-key', [MissingTranslationController::class, 'checkKey'])->name('check-key');
+    Route::get('/{languageCode}', [MissingTranslationController::class, 'getMissing'])->name('language');
+    Route::get('/{languageCode}/stats', [MissingTranslationController::class, 'getStats'])->name('stats');
+    Route::get('/{languageCode}/by-group', [MissingTranslationController::class, 'getMissingByGroup'])->name('by-group');
 });

@@ -65,5 +65,23 @@ class TranslationGates
                 return method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
             }
         );
+
+        // Export translations
+        Gate::define(
+            config('ai-translator.permissions.export_translations', 'export-translations'),
+            function ($user) {
+                // Default implementation - admins and editors can export
+                return method_exists($user, 'isAdmin') || (method_exists($user, 'can') && $user->can('edit content'));
+            }
+        );
+
+        // Import translations
+        Gate::define(
+            config('ai-translator.permissions.import_translations', 'import-translations'),
+            function ($user) {
+                // Default implementation - only admins can import
+                return method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
+            }
+        );
     }
 }
