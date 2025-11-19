@@ -79,6 +79,30 @@ return [
         'manage_settings' => 'manage-translator-settings',
         'view_translations' => 'view-translations',
         'delete_translations' => 'delete-translations',
+        'export_translations' => 'export-translations',
+        'import_translations' => 'import-translations',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Security & Authorization
+    |--------------------------------------------------------------------------
+    |
+    | Configure security and authorization behavior.
+    |
+    */
+    'security' => [
+        // Require authentication for all API endpoints
+        'require_authentication' => env('TRANSLATOR_REQUIRE_AUTH', false),
+
+        // Allow guest access when authentication is not required
+        'allow_guest_access' => env('TRANSLATOR_ALLOW_GUEST', true),
+
+        // Authorization mode: 'permissive' allows all when no user, 'strict' denies
+        'authorization_mode' => env('TRANSLATOR_AUTH_MODE', 'permissive'),
+
+        // Superadmin bypass: users with this permission bypass all checks
+        'superadmin_permission' => env('TRANSLATOR_SUPERADMIN', 'translator-superadmin'),
     ],
 
     /*

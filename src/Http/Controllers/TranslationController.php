@@ -2,6 +2,7 @@
 
 namespace Masum\AiTranslator\Http\Controllers;
 
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -14,6 +15,7 @@ use Masum\AiTranslator\Services\TranslationService;
 
 class TranslationController extends Controller
 {
+    use AuthorizesRequests;
     public function __construct(
         protected TranslationService $translationService
     ) {
