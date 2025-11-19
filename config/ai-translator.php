@@ -222,4 +222,44 @@ return [
             'decay_seconds' => 60, // 1 minute
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Input Sanitization
+    |--------------------------------------------------------------------------
+    |
+    | Configure how translation values are sanitized to prevent XSS and
+    | other injection attacks. Different modes provide different levels
+    | of security vs. flexibility.
+    |
+    */
+    'sanitization' => [
+        // Sanitization mode: strict, moderate, permissive, none
+        // - strict: No HTML allowed, all special chars encoded
+        // - moderate: Some HTML tags allowed (b, i, a, etc.)
+        // - permissive: Most HTML allowed but dangerous content removed
+        // - none: No sanitization (use with caution!)
+        'mode' => env('TRANSLATOR_SANITIZATION_MODE', 'moderate'),
+
+        // Enable sanitization for translation values
+        'enabled' => env('TRANSLATOR_SANITIZATION_ENABLED', true),
+
+        // Sanitize on input (when creating/updating translations)
+        'sanitize_on_input' => true,
+
+        // Sanitize on output (when retrieving translations)
+        'sanitize_on_output' => false,
+
+        // Log sanitization warnings
+        'log_warnings' => env('APP_DEBUG', false),
+
+        // Allowed HTML tags (for moderate mode)
+        'allowed_tags' => ['b', 'i', 'u', 'strong', 'em', 'a', 'br', 'p', 'span'],
+
+        // Allowed HTML attributes per tag
+        'allowed_attributes' => [
+            'a' => ['href', 'title', 'target'],
+            'span' => ['class'],
+        ],
+    ],
 ];
