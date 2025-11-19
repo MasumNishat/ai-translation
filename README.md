@@ -407,26 +407,155 @@ $translations = $service->autoTranslate(
 
 ### Using Helper Functions
 
+The package provides a comprehensive set of helper functions for easy translation management.
+
+#### Core Translation Functions
+
 ```php
+// Get translation with smart caching (cache → db → ai)
+$text = __t('welcome.message', 'home', 'Welcome', 'bn');
+// Parameters: key, group, default, locale
+
+// Set or update a translation
+$translation = trans_set('welcome.message', 'স্বাগতম', 'bn', 'home');
+// Parameters: key, value, locale, group, userId
+
+// Auto-translate a key to multiple languages using AI
+$translations = trans_auto(
+    key: 'welcome.title',
+    value: 'Welcome to our website',
+    sourceLang: 'en',
+    targetLangs: ['bn', 'fr', 'es'],
+    group: 'home'
+);
+
 // Get all translations for current locale
 $allTranslations = trans_all();
+$allTranslations = trans_all('bn'); // specific locale
 
-// Translate numbers (useful for Bengali, Arabic, etc.)
-echo trans_number(12345, 'bn'); // ১২৩৪৫
+// Clear translation cache
+trans_clear_cache(); // Clear all
+trans_clear_cache('welcome.message', 'bn', 'home'); // Clear specific
+trans_clear_cache(null, 'bn'); // Clear all for a language
 
-// Translate time
-echo trans_time('10:30 AM', 'bn');
+// Get all translation groups
+$groups = trans_groups();
+// Returns: ['home', 'services', 'common', ...]
 
-// Get available languages
+// Get translation history
+$history = trans_history($translationId, 50);
+```
+
+#### Language Management Functions
+
+```php
+// Get all active languages
 $languages = available_languages();
 
-// Get default language
+// Get the default language
 $defaultLang = default_language();
 
 // Get country info for a language
 $countryInfo = language_to_country('bn');
-// Returns: ['language_code' => 'bn', 'country' => 'Bangladesh', ...]
+// Returns: ['language_code' => 'bn', 'country' => 'Bangladesh', 'country_code' => 'BD', ...]
+
+// Get all active languages (alternative)
+$languages = ai_languages();
+$allLanguages = ai_languages(false); // include inactive
+
+// Get default language (alternative)
+$defaultLang = ai_default_language();
+
+// Get current language based on app locale
+$currentLang = ai_current_language();
+
+// Set application locale
+$success = ai_set_language('bn'); // Returns true/false
+
+// Get count of missing translations for a language
+$missingCount = ai_trans_missing('bn');
 ```
+
+#### Number & Time Translation Functions
+
+```php
+// Translate numbers (useful for Bengali, Arabic, Persian, etc.)
+echo trans_number(12345, 'bn'); // ১২৩৪৫
+echo trans_number(789, 'ar'); // ٧٨٩
+echo trans_number(456, 'fa'); // ۴۵۶
+
+// Translate time format
+echo trans_time('10:30 AM', 'bn'); // ১০:৩০ পূর্বাহ্ণ
+
+// Translate working hours display
+echo trans_working_hours('Monday-Friday', '9:00 AM', '5:00 PM', 'bn');
+// Output: সোমবার-শুক্রবার: ৯:০০ পূর্বাহ্ণ - ৫:০০ অপরাহ্ণ
+```
+
+#### Text Processing Functions
+
+```php
+// Replace placeholders in text with translations
+$text = trans_placeholders(
+    'Hello {{name}}, welcome to {{place}}',
+    ['name' => 'John', 'place' => 'common.website'],
+    'bn'
+);
+// Supports both {{key}} and :key formats
+```
+
+#### AI-Powered Translation Functions
+
+```php
+// Translate with replacements (Laravel-style)
+$text = ai_trans('welcome.message', ['name' => 'John'], 'bn');
+
+// Translate with pluralization
+$text = ai_trans_choice('items.count', 5, ['count' => 5], 'bn');
+// Looks for 'items.count.singular' or 'items.count.plural'
+
+// Check if translation exists
+if (ai_has_trans('welcome.message', 'bn')) {
+    // Translation exists in database
+}
+
+// Get translations for multiple keys at once
+$translations = ai_trans_array(['key1', 'key2', 'key3'], 'bn');
+// Returns: ['key1' => 'value1', 'key2' => 'value2', 'key3' => 'value3']
+
+// Get all translations for a specific group
+$serviceTranslations = ai_trans_group('services', 'bn');
+// Returns: ['service.name' => 'value', 'service.desc' => 'value', ...]
+```
+
+#### Function Reference Table
+
+| Function | Purpose | Example |
+|----------|---------|---------|
+| `__t()` | Get translation with AI fallback | `__t('key', 'group', 'default', 'bn')` |
+| `trans_set()` | Set/update translation | `trans_set('key', 'value', 'bn')` |
+| `trans_auto()` | Auto-translate to multiple languages | `trans_auto('key', 'value', 'en', ['bn'])` |
+| `trans_all()` | Get all translations for a locale | `trans_all('bn')` |
+| `trans_clear_cache()` | Clear translation cache | `trans_clear_cache()` |
+| `trans_groups()` | Get all translation groups | `trans_groups()` |
+| `trans_history()` | Get translation history | `trans_history($id)` |
+| `available_languages()` | Get active languages | `available_languages()` |
+| `default_language()` | Get default language | `default_language()` |
+| `language_to_country()` | Get country info | `language_to_country('bn')` |
+| `trans_number()` | Translate numbers | `trans_number(123, 'bn')` |
+| `trans_time()` | Translate time format | `trans_time('10:30 AM', 'bn')` |
+| `trans_working_hours()` | Translate working hours | `trans_working_hours('Mon-Fri', '9AM', '5PM')` |
+| `trans_placeholders()` | Replace placeholders | `trans_placeholders('Hello {{name}}', [...])` |
+| `ai_trans()` | Translate with replacements | `ai_trans('key', ['name' => 'John'])` |
+| `ai_trans_choice()` | Translate with pluralization | `ai_trans_choice('key', 5, ['count' => 5])` |
+| `ai_has_trans()` | Check if translation exists | `ai_has_trans('key', 'bn')` |
+| `ai_trans_array()` | Get multiple translations | `ai_trans_array(['key1', 'key2'])` |
+| `ai_trans_group()` | Get group translations | `ai_trans_group('services', 'bn')` |
+| `ai_languages()` | Get all languages | `ai_languages()` |
+| `ai_default_language()` | Get default language | `ai_default_language()` |
+| `ai_current_language()` | Get current language | `ai_current_language()` |
+| `ai_set_language()` | Set app locale | `ai_set_language('bn')` |
+| `ai_trans_missing()` | Get missing translation count | `ai_trans_missing('bn')` |
 
 ### Using with Models
 
