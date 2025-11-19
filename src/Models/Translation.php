@@ -74,6 +74,16 @@ class Translation extends Model
     }
 
     /**
+     * Get the user who translated this.
+     */
+    public function translatedBy(): BelongsTo
+    {
+        $userModel = config('ai-translator.user_model', 'App\\Models\\User');
+
+        return $this->belongsTo($userModel, 'translated_by_user_id');
+    }
+
+    /**
      * Scope to get only active translations.
      */
     public function scopeActive($query)
@@ -109,6 +119,57 @@ class Translation extends Model
     public function scopeByKey($query, string $key)
     {
         return $query->where('key', $key);
+    }
+
+    /**
+     * Scope to get only auto-translated translations.
+     */
+    public function scopeAutoTranslated($query)
+    {
+        return $query->where('is_auto_translated', true);
+    }
+
+    /**
+     * Scope to get only manually translated translations.
+     */
+    public function scopeManuallyTranslated($query)
+    {
+        return $query->where('is_auto_translated', false);
+    }
+
+    /**
+     * Scope to search translations by key or value.
+     */
+    public function scopeSearch($query, string $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('key', 'like', "%{$search}%")
+                ->orWhere('value', 'like', "%{$search}%");
+        });
+    }
+
+    /**
+     * Scope to get recent translations.
+     */
+    public function scopeRecent($query, int $days = 7)
+    {
+        return $query->where('created_at', '>=', now()->subDays($days));
+    }
+
+    /**
+     * Scope to get translations updated after a specific date.
+     */
+    public function scopeUpdatedAfter($query, string|\DateTimeInterface $date)
+    {
+        return $query->where('updated_at', '>=', $date);
+    }
+
+    /**
+     * Scope to get inactive translations.
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
     }
 
     /**
@@ -316,12 +377,18 @@ class Translation extends Model
     public function clearCache(): void
     {
         if ($this->language) {
-            $cacheKey = self::getCacheKey($this->key, $this->language->code, $this->group);
-            Cache::forget($cacheKey);
+            $cacheService = app(\Masum\AiTranslator\Services\CacheService::class);
+
+            // Clear specific translation cache
+            $cacheService->forget($this->key, $this->language->code, $this->group);
 
             // Also clear the "all" cache for this language
-            $allCacheKey = self::getCacheKey('all', $this->language->code);
-            Cache::forget($allCacheKey);
+            $cacheService->forget('all', $this->language->code, null);
+
+            // If using tags, clear by language to ensure consistency
+            if (config('ai-translator.cache.use_tags', true)) {
+                $cacheService->forgetByLanguage($this->language->code);
+            }
         }
     }
 

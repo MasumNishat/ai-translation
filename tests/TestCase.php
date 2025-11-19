@@ -15,6 +15,9 @@ abstract class TestCase extends Orchestra
     {
         parent::setUp();
 
+        // Run test migrations (users table, etc.)
+        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+
         // Run package migrations
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
@@ -44,6 +47,7 @@ abstract class TestCase extends Orchestra
         $app['config']->set('ai-translator.gemini.model', 'gemini-pro');
         $app['config']->set('ai-translator.cache.ttl', 3600);
         $app['config']->set('ai-translator.cache.enabled', true);
+        $app['config']->set('ai-translator.user_model', 'Masum\\AiTranslator\\Tests\\Models\\User');
 
         // Setup permissions
         $app['config']->set('ai-translator.permissions.manage_languages', 'manage-languages');

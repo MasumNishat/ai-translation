@@ -22,6 +22,19 @@ class LanguageController extends Controller
 
         $query = Language::query();
 
+        // Add translation counts for statistics
+        if ($request->boolean('with_stats', false)) {
+            $query->withCount([
+                'translations',
+                'translations as active_translations_count' => function ($q) {
+                    $q->where('is_active', true);
+                },
+                'translations as auto_translated_count' => function ($q) {
+                    $q->where('is_auto_translated', true);
+                },
+            ]);
+        }
+
         // Filter by active status
         if ($request->has('active_only') && $request->boolean('active_only')) {
             $query->active();
@@ -58,7 +71,15 @@ class LanguageController extends Controller
     {
         $this->authorize(config('ai-translator.permissions.view_translations', 'view-translations'));
 
-        $language = Language::getByCode($code);
+        $language = Language::withCount([
+            'translations',
+            'translations as active_translations_count' => function ($q) {
+                $q->where('is_active', true);
+            },
+            'translations as auto_translated_count' => function ($q) {
+                $q->where('is_auto_translated', true);
+            },
+        ])->where('code', $code)->first();
 
         if (!$language) {
             return response()->json([

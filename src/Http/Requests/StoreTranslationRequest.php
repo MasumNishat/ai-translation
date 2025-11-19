@@ -2,14 +2,53 @@
 
 namespace Masum\AiTranslator\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Masum\AiTranslator\Models\Language;
+use Masum\AiTranslator\Services\TranslationSanitizer;
 
-class StoreTranslationRequest extends FormRequest
+class StoreTranslationRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        if (!$this->user()) { return true; } return $this->user()->can(config("ai-translator.permissions.manage_translations", "manage-translations"));
+        return $this->authorizeWithSecurity(
+            config('ai-translator.permissions.manage_translations', 'manage-translations')
+        );
+    }
+
+    /**
+     * Prepare the data for validation
+     */
+    protected function prepareForValidation(): void
+    {
+        if (!config('ai-translator.sanitization.enabled', true)) {
+            return;
+        }
+
+        if (!config('ai-translator.sanitization.sanitize_on_input', true)) {
+            return;
+        }
+
+        $sanitizer = app(TranslationSanitizer::class);
+
+        // Sanitize translation value
+        if ($this->has('value')) {
+            $this->merge([
+                'value' => $sanitizer->sanitize($this->input('value')),
+            ]);
+        }
+
+        // Sanitize key
+        if ($this->has('key')) {
+            $this->merge([
+                'key' => $sanitizer->sanitizeKey($this->input('key')),
+            ]);
+        }
+
+        // Sanitize group
+        if ($this->has('group')) {
+            $this->merge([
+                'group' => $sanitizer->sanitizeGroup($this->input('group')),
+            ]);
+        }
     }
 
     public function rules(): array

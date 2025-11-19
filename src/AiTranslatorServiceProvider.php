@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Masum\AiTranslator\Gates\TranslationGates;
 use Masum\AiTranslator\Http\Middleware\SetLocale;
 use Masum\AiTranslator\Services\GeminiTranslationService;
+use Masum\AiTranslator\Services\TranslationSanitizer;
 use Masum\AiTranslator\Services\TranslationService;
 
 class AiTranslatorServiceProvider extends ServiceProvider
@@ -32,6 +33,10 @@ class AiTranslatorServiceProvider extends ServiceProvider
             return new TranslationService(
                 $app->make(GeminiTranslationService::class)
             );
+        });
+
+        $this->app->singleton(TranslationSanitizer::class, function ($app) {
+            return new TranslationSanitizer();
         });
     }
 
@@ -70,7 +75,11 @@ class AiTranslatorServiceProvider extends ServiceProvider
 
             // Register commands
             $this->commands([
-                // Commands can be added here
+                \Masum\AiTranslator\Console\Commands\ClearTranslationCacheCommand::class,
+                \Masum\AiTranslator\Console\Commands\TranslationStatsCommand::class,
+                \Masum\AiTranslator\Console\Commands\SyncTranslationsCommand::class,
+                \Masum\AiTranslator\Console\Commands\ExportTranslationsCommand::class,
+                \Masum\AiTranslator\Console\Commands\ImportTranslationsCommand::class,
             ]);
         }
     }
@@ -84,6 +93,7 @@ class AiTranslatorServiceProvider extends ServiceProvider
 
         // Register middleware
         $router->aliasMiddleware('translator.locale', SetLocale::class);
+        $router->aliasMiddleware('translator.ratelimit', \Masum\AiTranslator\Http\Middleware\RateLimitTranslations::class);
 
         // Optionally auto-append to web and api middleware groups
         // Users can manually add it if they prefer

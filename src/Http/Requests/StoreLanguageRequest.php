@@ -2,32 +2,11 @@
 
 namespace Masum\AiTranslator\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class StoreLanguageRequest extends FormRequest
+class StoreLanguageRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        // Check if authentication is required
-        if (config('ai-translator.security.require_authentication', false)) {
-            if (!$this->user()) {
-                return false; // Deny if auth required but no user
-            }
-        }
-
-        // If no user and guest access allowed (default for APIs/testing)
-        if (!$this->user()) {
-            return config('ai-translator.security.allow_guest_access', true);
-        }
-
-        // Check for superadmin permission
-        $superadminPermission = config('ai-translator.security.superadmin_permission');
-        if ($superadminPermission && $this->user()->can($superadminPermission)) {
-            return true; // Superadmin bypasses all checks
-        }
-
-        // Check the specific permission
-        return $this->user()->can(
+        return $this->authorizeWithSecurity(
             config('ai-translator.permissions.manage_languages', 'manage-languages')
         );
     }
