@@ -2,14 +2,15 @@
 
 namespace Masum\AiTranslator\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Masum\AiTranslator\Services\TranslationSanitizer;
 
-class UpdateTranslationRequest extends FormRequest
+class UpdateTranslationRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        if (!$this->user()) { return true; } return $this->user()->can(config("ai-translator.permissions.manage_translations", "manage-translations"));
+        return $this->authorizeWithSecurity(
+            config('ai-translator.permissions.manage_translations', 'manage-translations')
+        );
     }
 
     /**

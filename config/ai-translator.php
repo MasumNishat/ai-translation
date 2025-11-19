@@ -154,6 +154,10 @@ return [
     |
     */
     'security' => [
+        // Enable public API mode (bypasses all authentication/authorization)
+        // WARNING: Only enable for public-facing APIs or testing
+        'public_api' => env('TRANSLATOR_PUBLIC_API', false),
+
         // Require authentication for all API endpoints
         'require_authentication' => env('TRANSLATOR_REQUIRE_AUTH', false),
 
