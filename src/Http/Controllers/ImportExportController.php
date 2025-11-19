@@ -6,6 +6,7 @@ use Masum\AiTranslator\Services\JsonImportExportService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 
 class ImportExportController extends Controller
