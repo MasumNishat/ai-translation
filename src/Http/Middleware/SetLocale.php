@@ -14,6 +14,7 @@ class SetLocale
     public function handle(Request $request, Closure $next): mixed
     {
         $locale = $this->detectLocale($request);
+        $detectionSource = $this->lastDetectionSource;
 
         // Validate locale against active languages
         if ($locale && $this->isValidLocale($locale)) {
@@ -31,10 +32,23 @@ class SetLocale
                     $locale
                 );
             }
+
+            // Store locale in cookie for persistence (if detected from header or query)
+            if (in_array($detectionSource, ['header', 'query']) && config('ai-translator.detection.persist_in_cookie', true)) {
+                $cookieName = config('ai-translator.detection.cookie_name', 'app_locale');
+                $cookieExpires = config('ai-translator.detection.cookie_expires', 43200); // 30 days in minutes
+
+                cookie()->queue(cookie($cookieName, $locale, $cookieExpires));
+            }
         }
 
         return $next($request);
     }
+
+    /**
+     * Track the source where locale was detected.
+     */
+    protected ?string $lastDetectionSource = null;
 
     /**
      * Detect locale from various sources based on configuration.
@@ -53,11 +67,13 @@ class SetLocale
             };
 
             if ($locale) {
+                $this->lastDetectionSource = $source;
                 return $locale;
             }
         }
 
         // Fall back to app default
+        $this->lastDetectionSource = 'default';
         return config('app.locale', 'en');
     }
 

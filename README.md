@@ -88,6 +88,9 @@ TRANSLATOR_LANGUAGE_RATE_LIMIT=30
 TRANSLATOR_REQUIRE_AUTH=false
 TRANSLATOR_ALLOW_GUEST=true
 TRANSLATOR_SANITIZATION_ENABLED=true
+
+# Locale Detection (Optional)
+TRANSLATOR_PERSIST_LOCALE=true
 ```
 
 ### 5. Add Languages
@@ -800,22 +803,147 @@ trans_set('hero.title', 'Welcome', 'en', 'home');
 
 ## Middleware
 
-The `SetLocale` middleware detects locale from multiple sources:
+The `SetLocale` middleware automatically detects and sets the application locale from multiple sources.
 
-1. Query parameter: `?locale=bn`
-2. Accept-Language header
-3. Session
-4. Cookie
+### Locale Detection Flow
+
+The middleware checks sources in the following priority order:
+
+1. **Query Parameter** - `?locale=bn`
+2. **Accept-Language Header** - `Accept-Language: bn,en-US;q=0.9`
+3. **Session** - Stored from previous request
+4. **Cookie** - Persisted locale preference
+
+### How It Works
+
+```php
+// 1. Query parameter (highest priority)
+GET /api/translator/translations?locale=bn
+
+// 2. Accept-Language header
+curl -H "Accept-Language: bn,en-US;q=0.9,en;q=0.8" https://example.com/api
+
+// 3. Session (automatically stored when locale is set)
+session(['locale' => 'bn']);
+
+// 4. Cookie (automatically persisted for 30 days)
+// Cookie: app_locale=bn
+```
+
+### Accept-Language Header Support
+
+The middleware intelligently parses the `Accept-Language` header:
+
+```php
+// Standard format with quality values
+Accept-Language: bn,en-US;q=0.9,en;q=0.8,fr;q=0.7
+
+// The middleware will:
+// 1. Parse all language codes
+// 2. Validate against active languages in database
+// 3. Return the first valid language
+// 4. Store in cookie for future requests
+```
+
+**Example:**
+```bash
+# Browser automatically sends Accept-Language header
+curl -H "Accept-Language: bn" https://example.com/api/translator/translations
+
+# The response will be in Bengali (bn) if it's an active language
+# A cookie will be set: app_locale=bn (expires in 30 days)
+```
+
+### Configuration
 
 Configure detection sources in `config/ai-translator.php`:
 
 ```php
 'detection' => [
+    // Detection sources in priority order
     'sources' => ['query', 'header', 'session', 'cookie'],
+
+    // Query parameter name
     'query_param' => 'locale',
+
+    // HTTP header name for locale detection
+    'header_name' => 'Accept-Language',
+
+    // Session key for storing locale
     'session_key' => 'locale',
+
+    // Cookie settings
     'cookie_name' => 'app_locale',
+    'cookie_expires' => 43200, // 30 days in minutes
+    'persist_in_cookie' => true, // Auto-persist from header/query
 ],
+```
+
+### Environment Variables
+
+```env
+# Disable automatic cookie persistence
+TRANSLATOR_PERSIST_LOCALE=false
+```
+
+### Cookie Persistence
+
+When locale is detected from **header** or **query parameter**, it's automatically stored in a cookie for future requests:
+
+- **Cookie Name:** `app_locale` (configurable)
+- **Expiration:** 30 days (configurable)
+- **Disable:** Set `persist_in_cookie` to `false`
+
+This means:
+- First request with `?locale=bn` → Cookie set
+- Subsequent requests → Locale remembered (no need to send query param)
+- Works with Accept-Language header too!
+
+### Usage with API Clients
+
+#### JavaScript/Fetch
+```javascript
+// Option 1: Query parameter
+fetch('/api/translator/translations?locale=bn');
+
+// Option 2: Accept-Language header
+fetch('/api/translator/translations', {
+  headers: {
+    'Accept-Language': 'bn'
+  }
+});
+```
+
+#### cURL
+```bash
+# Query parameter
+curl "https://example.com/api/translator/translations?locale=bn"
+
+# Accept-Language header
+curl -H "Accept-Language: bn" https://example.com/api/translator/translations
+```
+
+#### Axios
+```javascript
+// Set default Accept-Language header
+axios.defaults.headers.common['Accept-Language'] = 'bn';
+
+// Or per request
+axios.get('/api/translator/translations', {
+  headers: { 'Accept-Language': 'bn' }
+});
+```
+
+### Manual Locale Setting
+
+You can also set locale programmatically:
+
+```php
+// In your controller or middleware
+app()->setLocale('bn');
+
+// Or using helper function
+ai_set_language('bn');
 ```
 
 ## Advanced Features
