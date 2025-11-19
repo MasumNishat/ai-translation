@@ -76,6 +76,38 @@ class Language extends Model
     }
 
     /**
+     * Scope to get only inactive languages.
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
+     * Scope to get default language.
+     */
+    public function scopeDefault($query)
+    {
+        return $query->where('is_default', true);
+    }
+
+    /**
+     * Scope by direction (ltr/rtl).
+     */
+    public function scopeByDirection($query, string $direction)
+    {
+        return $query->where('direction', $direction);
+    }
+
+    /**
+     * Scope by region.
+     */
+    public function scopeByRegion($query, string $region)
+    {
+        return $query->where('region', $region);
+    }
+
+    /**
      * Get all active languages from cache or database.
      */
     public static function getActive(): \Illuminate\Support\Collection

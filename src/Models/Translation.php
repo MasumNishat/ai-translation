@@ -122,6 +122,57 @@ class Translation extends Model
     }
 
     /**
+     * Scope to get only auto-translated translations.
+     */
+    public function scopeAutoTranslated($query)
+    {
+        return $query->where('is_auto_translated', true);
+    }
+
+    /**
+     * Scope to get only manually translated translations.
+     */
+    public function scopeManuallyTranslated($query)
+    {
+        return $query->where('is_auto_translated', false);
+    }
+
+    /**
+     * Scope to search translations by key or value.
+     */
+    public function scopeSearch($query, string $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('key', 'like', "%{$search}%")
+                ->orWhere('value', 'like', "%{$search}%");
+        });
+    }
+
+    /**
+     * Scope to get recent translations.
+     */
+    public function scopeRecent($query, int $days = 7)
+    {
+        return $query->where('created_at', '>=', now()->subDays($days));
+    }
+
+    /**
+     * Scope to get translations updated after a specific date.
+     */
+    public function scopeUpdatedAfter($query, string|\DateTimeInterface $date)
+    {
+        return $query->where('updated_at', '>=', $date);
+    }
+
+    /**
+     * Scope to get inactive translations.
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
      * Get translation with smart caching (cache → db → ai).
      * This is the core method that implements the retrieval flow.
      */
