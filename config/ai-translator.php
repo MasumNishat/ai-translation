@@ -39,17 +39,11 @@ return [
     | Translation Behavior
     |--------------------------------------------------------------------------
     |
-    | Configure caching, fallback, and auto-translation behavior.
+    | Configure fallback and auto-translation behavior.
     |
     */
     'translation' => [
         'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
-
-        // Cache TTL in seconds (3600 = 1 hour)
-        'cache_ttl' => env('TRANSLATOR_CACHE_TTL', 3600),
-
-        // Cache key prefix
-        'cache_prefix' => 'ai_translator',
 
         // Enable automatic AI translation for missing translations
         'auto_translate_enabled' => env('TRANSLATOR_AUTO_TRANSLATE', true),
@@ -62,6 +56,36 @@ return [
 
         // Translation retrieval flow: cache → db → ai
         'retrieval_flow' => ['cache', 'db', 'ai'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure caching strategy for translation retrieval.
+    | Cache tagging allows granular invalidation by language or group.
+    |
+    */
+    'cache' => [
+        // Enable caching
+        'enabled' => env('TRANSLATOR_CACHE_ENABLED', true),
+
+        // Cache TTL in seconds (3600 = 1 hour, 0 = forever)
+        'ttl' => env('TRANSLATOR_CACHE_TTL', 3600),
+
+        // Cache key prefix to avoid conflicts
+        'prefix' => env('TRANSLATOR_CACHE_PREFIX', 'ai_translator'),
+
+        // Cache tags for granular invalidation
+        // Note: Only supported by redis, memcached, and array drivers
+        'use_tags' => env('TRANSLATOR_CACHE_USE_TAGS', true),
+
+        // Warm up cache on application boot
+        'warmup_on_boot' => env('TRANSLATOR_CACHE_WARMUP', false),
+
+        // Languages to warm up (empty = all)
+        'warmup_languages' => [],
     ],
 
     /*

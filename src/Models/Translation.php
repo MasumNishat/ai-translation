@@ -316,12 +316,18 @@ class Translation extends Model
     public function clearCache(): void
     {
         if ($this->language) {
-            $cacheKey = self::getCacheKey($this->key, $this->language->code, $this->group);
-            Cache::forget($cacheKey);
+            $cacheService = app(\Masum\AiTranslator\Services\CacheService::class);
+
+            // Clear specific translation cache
+            $cacheService->forget($this->key, $this->language->code, $this->group);
 
             // Also clear the "all" cache for this language
-            $allCacheKey = self::getCacheKey('all', $this->language->code);
-            Cache::forget($allCacheKey);
+            $cacheService->forget('all', $this->language->code, null);
+
+            // If using tags, clear by language to ensure consistency
+            if (config('ai-translator.cache.use_tags', true)) {
+                $cacheService->forgetByLanguage($this->language->code);
+            }
         }
     }
 
