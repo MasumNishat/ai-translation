@@ -15,7 +15,6 @@ AI-powered Laravel translation package with Google Gemini API integration, smart
 - **RESTful API** for translation management
 - **Laravel Gates** for permission management
 - **Language to Country Mapping** API
-- **Batch Translation** support with job batching
 - **Model Trait** for easy integration
 - **Translation History** tracking
 - **Input Sanitization** for security
@@ -75,8 +74,6 @@ TRANSLATOR_QUEUE_NAME=translations
 TRANSLATOR_QUEUE_BULK_NAME=translations-bulk
 TRANSLATOR_QUEUE_TIMEOUT=120
 TRANSLATOR_QUEUE_RETRIES=3
-TRANSLATOR_BATCH_ENABLED=true
-TRANSLATOR_BATCH_SIZE=50
 
 # Rate Limiting
 TRANSLATOR_RATE_LIMIT=60
@@ -170,8 +167,6 @@ return [
         'timeout' => env('TRANSLATOR_QUEUE_TIMEOUT', 120),
         'retries' => env('TRANSLATOR_QUEUE_RETRIES', 3),
         'backoff' => [10, 30, 60],
-        'batch_enabled' => env('TRANSLATOR_BATCH_ENABLED', true),
-        'batch_size' => env('TRANSLATOR_BATCH_SIZE', 50),
     ],
 
     // Rate limiting
@@ -219,7 +214,6 @@ The package supports asynchronous translation processing using Laravel's queue s
 
 - **Asynchronous Processing** - AI translations run in the background
 - **Automatic Retries** - Failed jobs retry with exponential backoff (10s, 30s, 60s)
-- **Job Batching** - Process multiple translations efficiently
 - **Graceful Fallback** - Falls back to synchronous processing if queue fails
 
 ### Setup Queue Workers
@@ -323,7 +317,6 @@ The package implements rate limiting to prevent API abuse and ensure fair usage 
 |----------|--------------|-------------|
 | **Translations** | 60/min | General translation API requests |
 | **Auto-Translate** | 10/min | AI-powered translation requests (expensive) |
-| **Bulk Operations** | 5/min | Import/Export and batch operations (very strict) |
 | **Languages** | 30/min | Language management endpoints |
 
 ### Environment Configuration
@@ -641,7 +634,6 @@ POST   /api/translator/translations/clear-cache # Clear cache
 
 ```http
 POST   /api/translator/auto-translate         # Auto-translate single key
-POST   /api/translator/batch-translate        # Batch translate
 ```
 
 ### Settings Management
@@ -947,25 +939,6 @@ ai_set_language('bn');
 ```
 
 ## Advanced Features
-
-### Batch Translation
-
-```php
-$service = app(TranslationService::class);
-
-$keyValues = [
-    'welcome.title' => 'Welcome',
-    'welcome.message' => 'Hello, welcome to our website',
-    'button.submit' => 'Submit',
-];
-
-$results = $service->batchTranslate(
-    keyValues: $keyValues,
-    sourceLang: 'en',
-    targetLangs: ['bn', 'fr', 'es'],
-    group: 'home'
-);
-```
 
 ### Find Missing Translations
 

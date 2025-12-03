@@ -31,6 +31,12 @@ class SetLocale
                     config('ai-translator.detection.session_key', 'locale'),
                     $locale
                 );
+                if ($request->user()) {
+                    $request->user()->local = $locale;
+                    $request->user()->save();
+
+                    //set config app.locale to the local
+                }
             }
 
             // Store locale in cookie for persistence (if detected from header or query)
@@ -55,14 +61,16 @@ class SetLocale
      */
     protected function detectLocale(Request $request): ?string
     {
-        $sources = config('ai-translator.detection.sources', ['query', 'header', 'session', 'cookie']);
+        $sources = config('ai-translator.detection.sources', ['query', 'header', 'session', 'cookie', 'api']);
 
         foreach ($sources as $source) {
             $locale = match ($source) {
+
                 'query' => $this->getFromQuery($request),
                 'header' => $this->getFromHeader($request),
                 'session' => $this->getFromSession($request),
                 'cookie' => $this->getFromCookie($request),
+                'db' => $this->getFromDB($request),
                 default => null,
             };
 
@@ -77,6 +85,18 @@ class SetLocale
         return config('app.locale', 'en');
     }
 
+    /**
+     * Get locale from query parameter.
+     */
+    protected function getFromDB(Request $request): ?string
+    {
+        $local = config('app.locale', 'en');
+        if ($request->user()) {
+            $local = $request->user()->local;
+        }
+
+        return $local;
+    }
     /**
      * Get locale from query parameter.
      */

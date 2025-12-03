@@ -43,17 +43,18 @@ class TranslationService
     /**
      * Auto-translate a key to multiple target languages using AI.
      *
-     * @param  string  $key  Translation key
-     * @param  string  $sourceValue  Source text value
-     * @param  string  $sourceLang  Source language code
-     * @param  array  $targetLangs  Target language codes
-     * @param  string|null  $group  Translation group
-     * @param  int|null  $userId  User ID for audit trail
+     * @param string $key Translation key
+     * @param string $sourceValue Source text value
+     * @param string $sourceLang Source language code
+     * @param array $targetLangs Target language codes
+     * @param string|null $group Translation group
+     * @param int|null $userId User ID for audit trail
      * @return array Array of created translations ['bn' => Translation, 'fr' => Translation, ...]
+     * @throws \Exception
      */
-    public function autoTranslate(
+    public function translate(
         string $key,
-        string $sourceValue,
+        string | array $sourceValue,
         string $sourceLang,
         array $targetLangs,
         ?string $group = null,
@@ -64,17 +65,16 @@ class TranslationService
 
         // Translate to target languages using AI
         $translations = $this->geminiService->translate(
-            $sourceValue,
+            is_array($sourceValue)? $sourceValue : [$sourceValue],
             $sourceLang,
             $targetLangs
         );
-
         $results = [];
-
-        foreach ($translations as $targetLang => $translatedValue) {
+        foreach ($translations as $translation) {
+            $targetLang = $translation['local'];
+            $translatedValue = $translation['translated'];
             try {
                 $language = Language::getByCode($targetLang);
-
                 if (!$language) {
                     logger()->warning("Language '{$targetLang}' not found, skipping.");
                     continue;
@@ -109,76 +109,6 @@ class TranslationService
         }
 
         return $results;
-    }
-
-    /**
-     * Batch translate multiple keys.
-     *
-     * @param  array  $keyValues  Array of ['key' => 'value']
-     * @param  string  $sourceLang  Source language code
-     * @param  array  $targetLangs  Target language codes
-     * @param  string|null  $group  Translation group
-     * @return array Results of translations
-     */
-    public function batchTranslate(
-        array $keyValues,
-        string $sourceLang,
-        array $targetLangs,
-        ?string $group = null
-    ): array {
-        DB::beginTransaction();
-
-        try {
-            // Save source translations first
-            foreach ($keyValues as $key => $value) {
-                $this->set($key, $value, $sourceLang, $group);
-            }
-
-            // Get AI translations for all texts
-            $aiTranslations = $this->geminiService->batchTranslate(
-                $keyValues,
-                $sourceLang,
-                $targetLangs
-            );
-
-            $results = [];
-
-            // Save all translations
-            foreach ($aiTranslations as $key => $translations) {
-                $results[$key] = [];
-
-                foreach ($translations as $targetLang => $translatedValue) {
-                    $language = Language::getByCode($targetLang);
-
-                    if (!$language) {
-                        continue;
-                    }
-
-                    $translation = Translation::updateOrCreate(
-                        [
-                            'language_id' => $language->id,
-                            'group' => $group,
-                            'key' => $key,
-                        ],
-                        [
-                            'value' => $translatedValue,
-                            'is_active' => true,
-                            'is_auto_translated' => true,
-                        ]
-                    );
-
-                    $results[$key][$targetLang] = $translation;
-                }
-            }
-
-            DB::commit();
-
-            return $results;
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            throw $e;
-        }
     }
 
     /**

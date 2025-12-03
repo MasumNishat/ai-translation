@@ -63,7 +63,7 @@ class TranslationController extends Controller
 
         // Check if auto-translate is requested
         if ($request->boolean('auto_translate') && !empty($validated['target_languages'])) {
-            $translations = $this->translationService->autoTranslate(
+            $translations = $this->translationService->translate(
                 key: $validated['key'],
                 sourceValue: $validated['value'],
                 sourceLang: $request->input('language_code'),
@@ -238,7 +238,7 @@ class TranslationController extends Controller
 
         // Synchronous processing (either requested or fallback)
         try {
-            $translations = $this->translationService->autoTranslate(
+            $translations = $this->translationService->translate(
                 key: $validated['key'],
                 sourceValue: $validated['value'],
                 sourceLang: $validated['source_language'],
@@ -256,81 +256,6 @@ class TranslationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Auto-translation failed: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Batch translate multiple keys.
-     */
-    public function batchTranslate(Request $request): JsonResponse
-    {
-        $this->authorize(config('ai-translator.permissions.auto_translate', 'auto-translate'));
-
-        $validated = $request->validate([
-            'translations' => ['required', 'array', 'min:1'],
-            'translations.*.key' => ['required', 'string'],
-            'translations.*.value' => ['required', 'string'],
-            'translations.*.group' => ['nullable', 'string'],
-            'source_language' => ['required', 'string', 'exists:languages,code'],
-            'target_languages' => ['required', 'array', 'min:1'],
-            'target_languages.*' => ['string', 'exists:languages,code'],
-            'group' => ['nullable', 'string'],
-        ]);
-
-        // Check if queueing is enabled and batching is supported
-        $useQueue = config('ai-translator.queue.enabled', true)
-            && config('ai-translator.queue.batch_enabled', true)
-            && !$request->boolean('sync', false);
-
-        if ($useQueue && count($validated['translations']) > 1) {
-            try {
-                // Dispatch batch translation job
-                $job = \Masum\AiTranslator\Jobs\BatchTranslateJob::dispatch(
-                    $validated['translations'],
-                    $validated['source_language'],
-                    $validated['target_languages'],
-                    $request->user()?->id,
-                    ['group' => $validated['group'] ?? null]
-                );
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Batch translation queued successfully. Processing in background.',
-                    'data' => [
-                        'status' => 'queued',
-                        'job_id' => $job->id ?? null,
-                        'count' => count($validated['translations']),
-                    ],
-                ], 202); // 202 Accepted
-            } catch (\Exception $e) {
-                // If queueing fails, fall back to sync processing
-                \Log::warning('Failed to queue batch translation, falling back to sync', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        // Synchronous processing (either requested or fallback)
-        try {
-            $keyValues = collect($validated['translations'])->pluck('value', 'key')->toArray();
-
-            $results = $this->translationService->batchTranslate(
-                keyValues: $keyValues,
-                sourceLang: $validated['source_language'],
-                targetLangs: $validated['target_languages'],
-                group: $validated['group'] ?? null
-            );
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Batch translation completed successfully.',
-                'data' => $results,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Batch translation failed: '.$e->getMessage(),
             ], 500);
         }
     }

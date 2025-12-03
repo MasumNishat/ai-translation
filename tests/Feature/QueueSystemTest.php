@@ -4,11 +4,9 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Event;
 use Masum\AiTranslator\Jobs\TranslateJob;
-use Masum\AiTranslator\Jobs\BatchTranslateJob;
 use Masum\AiTranslator\Events\TranslationCompleted;
 use Masum\AiTranslator\Events\TranslationFailed;
 use Masum\AiTranslator\Models\Language;
-use Masum\AiTranslator\Models\Translation;
 use function Pest\Laravel\postJson;
 
 describe('Queue System - Configuration', function () {
@@ -109,65 +107,6 @@ describe('Queue System - TranslateJob', function () {
     })->group('queue', 'jobs');
 });
 
-describe('Queue System - BatchTranslateJob', function () {
-    beforeEach(function () {
-        Queue::fake();
-
-        Language::factory()->create(['code' => 'en']);
-        Language::factory()->create(['code' => 'es']);
-    });
-
-    test('batch translate job can be dispatched', function () {
-        $translations = [
-            ['key' => 'home.title', 'value' => 'Welcome'],
-            ['key' => 'home.subtitle', 'value' => 'Dashboard'],
-        ];
-
-        BatchTranslateJob::dispatch(
-            $translations,
-            'en',
-            ['es'],
-            1
-        );
-
-        Queue::assertPushed(BatchTranslateJob::class);
-    })->group('queue', 'jobs');
-
-    test('batch translate job is pushed to bulk queue', function () {
-        $translations = [
-            ['key' => 'home.title', 'value' => 'Welcome'],
-        ];
-
-        BatchTranslateJob::dispatch(
-            $translations,
-            'en',
-            ['es']
-        );
-
-        Queue::assertPushedOn('translations-bulk', BatchTranslateJob::class);
-    })->group('queue', 'jobs');
-
-    test('batch translate job has correct tags', function () {
-        $translations = [
-            ['key' => 'home.title', 'value' => 'Welcome'],
-            ['key' => 'home.subtitle', 'value' => 'Dashboard'],
-        ];
-
-        $job = new BatchTranslateJob(
-            $translations,
-            'en',
-            ['es'],
-            456
-        );
-
-        $tags = $job->tags();
-
-        expect($tags)->toContain('batch-translation')
-            ->and($tags)->toContain('source:en')
-            ->and($tags)->toContain('user:456')
-            ->and($tags)->toContain('count:2');
-    })->group('queue', 'jobs');
-});
 
 describe('Queue System - Auto-Translate API with Queue', function () {
     beforeEach(function () {
@@ -246,25 +185,6 @@ describe('Queue System - Batch Translate API with Queue', function () {
         Language::factory()->create(['code' => 'en']);
         Language::factory()->create(['code' => 'es']);
     });
-
-    test('batch translate queues job when queue is enabled', function () {
-        $response = postJson('/api/translator/batch-translate', [
-            'translations' => [
-                ['key' => 'home.title', 'value' => 'Welcome'],
-                ['key' => 'home.subtitle', 'value' => 'Dashboard'],
-            ],
-            'source_language' => 'en',
-            'target_languages' => ['es'],
-        ]);
-
-        $response->assertStatus(202)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Batch translation queued successfully. Processing in background.',
-            ]);
-
-        Queue::assertPushed(BatchTranslateJob::class);
-    })->group('queue', 'api');
 
     test('batch translate processes synchronously when sync=true', function () {
         $response = postJson('/api/translator/batch-translate', [
@@ -354,24 +274,5 @@ describe('Queue System - Job Processing', function () {
         );
 
         Bus::assertDispatched(TranslateJob::class);
-    })->group('queue', 'processing');
-
-    test('batch translate job can be processed', function () {
-        Language::factory()->create(['code' => 'en']);
-        Language::factory()->create(['code' => 'es']);
-
-        $translations = [
-            ['key' => 'test.key1', 'value' => 'Value 1'],
-            ['key' => 'test.key2', 'value' => 'Value 2'],
-        ];
-
-        BatchTranslateJob::dispatch(
-            $translations,
-            'en',
-            ['es'],
-            1
-        );
-
-        Bus::assertDispatched(BatchTranslateJob::class);
     })->group('queue', 'processing');
 });

@@ -37,7 +37,6 @@ Route::prefix('translations')->name('translations.')->middleware('translator.rat
 // AI Translation Routes
 Route::middleware('translator.ratelimit:auto_translate')->group(function () {
     Route::post('/auto-translate', [TranslationController::class, 'autoTranslate'])->name('auto-translate');
-    Route::post('/batch-translate', [TranslationController::class, 'batchTranslate'])->name('batch-translate');
 });
 
 // Settings Management Routes
@@ -49,12 +48,12 @@ Route::prefix('settings')->name('settings.')->group(function () {
 });
 
 // Import/Export Routes
-Route::prefix('import-export')->name('import-export.')->middleware('translator.ratelimit:bulk')->group(function () {
-    Route::get('/export/all', [ImportExportController::class, 'exportAll'])->name('export.all');
-    Route::get('/export/{languageCode}', [ImportExportController::class, 'exportJson'])->name('export.language');
-    Route::get('/export/{languageCode}/{group}', [ImportExportController::class, 'exportJsonByGroup'])->name('export.group');
-    Route::post('/import', [ImportExportController::class, 'importJson'])->name('import');
-});
+//Route::prefix('import-export')->name('import-export.')->middleware('translator.ratelimit:bulk')->group(function () {
+//    Route::get('/export/all', [ImportExportController::class, 'exportAll'])->name('export.all');
+//    Route::get('/export/{languageCode}', [ImportExportController::class, 'exportJson'])->name('export.language');
+//    Route::get('/export/{languageCode}/{group}', [ImportExportController::class, 'exportJsonByGroup'])->name('export.group');
+//    Route::post('/import', [ImportExportController::class, 'importJson'])->name('import');
+//});
 
 // Missing Translation Detection Routes
 Route::prefix('missing-translations')->name('missing-translations.')->group(function () {

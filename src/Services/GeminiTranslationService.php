@@ -2,8 +2,13 @@
 
 namespace Masum\AiTranslator\Services;
 
+use Gemini\Data\GenerationConfig;
+use Gemini\Data\Schema;
+use Gemini\Enums\DataType;
+use Gemini\Enums\ResponseMimeType;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use Gemini\Laravel\Facades\Gemini;
 use Masum\AiTranslator\Models\PackageSetting;
 
 class GeminiTranslationService
@@ -29,7 +34,7 @@ class GeminiTranslationService
      * @return array Array of translations ['bn' => 'translated text', 'fr' => '...']
      */
     public function translate(
-        string $text,
+        string | array $text,
         string $sourceLang,
         array $targetLangs,
         array $context = []
@@ -41,28 +46,19 @@ class GeminiTranslationService
         }
 
         $translations = [];
+        try {
+            $prompt = $this->buildBatchTranslationPrompt(is_array($text)? $text : [$text], $sourceLang, $targetLangs);
+            $translations = $this->callGeminiApi($prompt, $apiKey);
 
-        foreach ($targetLangs as $targetLang) {
-            try {
-                $prompt = $this->buildTranslationPrompt($text, $sourceLang, $targetLang, $context);
-                $translation = $this->callGeminiApi($prompt, $apiKey);
+        } catch (\Exception $e) {
+            logger()->error('Failed to translate text', [
+                'text' => $text,
+                'source' => $sourceLang,
+                'target' => implode(", ", $targetLangs),
+                'error' => $e->getMessage(),
+            ]);
 
-                if ($translation) {
-                    $translations[$targetLang] = $translation;
-                }
-            } catch (\Exception $e) {
-                logger()->error('Failed to translate text', [
-                    'text' => $text,
-                    'source' => $sourceLang,
-                    'target' => $targetLang,
-                    'error' => $e->getMessage(),
-                ]);
-
-                // Continue with next language instead of failing completely
-                continue;
-            }
         }
-
         return $translations;
     }
 
@@ -161,18 +157,15 @@ class GeminiTranslationService
     {
         // 1. Check database
         $dbKey = PackageSetting::get('gemini_api_key');
-
         if ($dbKey) {
             return $dbKey;
         }
-
         // 2. Check config file
         $configKey = config('ai-translator.gemini.api_key');
 
         if ($configKey) {
             return $configKey;
         }
-
         // 3. Check environment variable
         return env('GEMINI_API_KEY');
     }
@@ -180,40 +173,16 @@ class GeminiTranslationService
     /**
      * Call Gemini API with retry logic.
      */
-    protected function callGeminiApi(string $prompt, string $apiKey, int $attempt = 1): string
+    protected function callGeminiApi(string $prompt, string $apiKey, int $attempt = 1): array
     {
-        $baseUrl = config('ai-translator.gemini.api_url', 'https://generativelanguage.googleapis.com/v1beta');
-        $model = config('ai-translator.gemini.model', 'gemini-pro');
-        $url = "{$baseUrl}/models/{$model}:generateContent?key={$apiKey}";
-
         try {
-            $response = $this->client->post($url, [
-                'json' => [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt],
-                            ],
-                        ],
-                    ],
-                    'generationConfig' => [
-                        'temperature' => 0.3,
-                        'maxOutputTokens' => 2048,
-                    ],
-                ],
-                'timeout' => $this->timeout,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                ],
-            ]);
-
-            $body = json_decode($response->getBody()->getContents(), true);
+            $model = config('ai-translator.gemini.model', 'gemini-2.0-flash');
+            $body = json_decode($this->promptJson($prompt, $model), true);
 
             // Extract text from Gemini response
-            if (isset($body['candidates'][0]['content']['parts'][0]['text'])) {
-                return trim($body['candidates'][0]['content']['parts'][0]['text']);
+            if (isset($body) && is_array($body) && count($body) > 0) {
+                return $body;
             }
-
             throw new \Exception('Invalid response format from Gemini API');
         } catch (RequestException $e) {
             // Retry logic
@@ -241,49 +210,18 @@ class GeminiTranslationService
     }
 
     /**
-     * Build translation prompt for Gemini.
-     */
-    protected function buildTranslationPrompt(
-        string $text,
-        string $sourceLang,
-        string $targetLang,
-        array $context = []
-    ): string {
-        $contextInfo = '';
-
-        if (!empty($context)) {
-            $contextInfo = "\n\nContext: ".json_encode($context);
-        }
-
-        return <<<PROMPT
-You are a professional translator. Translate the following text from {$sourceLang} to {$targetLang}.
-
-Requirements:
-- Provide ONLY the translated text, no explanations or additional comments
-- Maintain the original tone and style
-- Keep any formatting (line breaks, punctuation)
-- Preserve any placeholder variables (e.g., {{name}}, :attribute)
-- If the text is a single word or technical term, provide the most appropriate translation
-
-Source text:
-{$text}{$contextInfo}
-
-Translation:
-PROMPT;
-    }
-
-    /**
      * Build batch translation prompt.
      */
     protected function buildBatchTranslationPrompt(
         array $texts,
         string $sourceLang,
-        string $targetLang
+        array $targetLang
     ): string {
         $textsJson = json_encode($texts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
+        $targetLang = implode(", ", $targetLang);
         return <<<PROMPT
-You are a professional translator. Translate the following texts from {$sourceLang} to {$targetLang}.
+You are a professional translator. Translate the following texts from local {$sourceLang} to local(s) {$targetLang}.
+Local is ISO 639-1 language code (2 letters, lowercase) like en, bn, fr, es, de, ar, hi, zh, ja, ko etc.
 
 Input is a JSON object where keys are identifiers and values are texts to translate.
 Output MUST be a valid JSON object with the same keys and translated values.
@@ -293,12 +231,40 @@ Requirements:
 - Maintain the same keys as input
 - Preserve formatting and placeholders in the texts
 - Ensure consistent terminology across all translations
+- Preserve placeholders like {variable}, {name}, etc. exactly
+- Keep HTML tags and formatting: <b>, <i>, <a href="...">
+- Maintain technical terms consistently
+- Return ONLY the JSON object, no other text
 
 Input JSON:
 {$textsJson}
-
-Output JSON (translated):
 PROMPT;
+    }
+
+    private function promptJson($prompt, $model): string
+    {
+        config(['gemini.api_key' => $this->getApiKey()]);
+        return Gemini::generativeModel(model: $model)
+            ->withGenerationConfig(
+                generationConfig: new GenerationConfig(
+                    maxOutputTokens: 2048,
+                    temperature: 0.3,
+                    responseMimeType: ResponseMimeType::APPLICATION_JSON,
+                    responseSchema: new Schema(
+                        type: DataType::ARRAY,
+                        items: new Schema(
+                            type: DataType::OBJECT,
+                            properties: [
+                                'local' => new Schema(type: DataType::STRING),
+                                'translated' => new Schema(type: DataType::STRING),
+                            ],
+                            required: ['local', 'translated']
+                        ),
+                    )
+                )
+            )
+            ->generateContent($prompt)
+            ->text();
     }
 
     /**
@@ -316,4 +282,5 @@ Text:
 Language code:
 PROMPT;
     }
+
 }

@@ -12,6 +12,7 @@ class TranslationGates
     public static function register(): void
     {
         // Manage languages (add, edit, delete languages)
+
         Gate::define(
             config('ai-translator.permissions.manage_languages', 'manage-languages'),
             function ($user) {

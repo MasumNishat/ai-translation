@@ -1,79 +1,80 @@
 {
-    "name": "masum/laravel-ai-translator",
-    "description": "AI-powered Laravel translation package with Gemini API integration, smart caching, and automatic translation management",
-    "type": "library",
-    "license": "MIT",
-    "keywords": [
-        "laravel",
-        "translation",
-        "i18n",
-        "localization",
-        "ai",
-        "gemini",
-        "multilingual"
-    ],
-    "authors": [
-        {
-            "name": "Masum",
-            "email": "masum.nishat21@gmail.com"
-        }
-    ],
-    "require": {
-        "php": "^8.2",
-        "illuminate/support": "^11.0|^12.0",
-        "illuminate/database": "^11.0|^12.0",
-        "illuminate/cache": "^11.0|^12.0",
-        "guzzlehttp/guzzle": "^7.0"
+  "name": "masum/laravel-ai-translator",
+  "description": "AI-powered Laravel translation package with Gemini API integration, smart caching, and automatic translation management",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "laravel",
+    "translation",
+    "i18n",
+    "localization",
+    "ai",
+    "gemini",
+    "multilingual"
+  ],
+  "authors": [
+    {
+      "name": "Masum",
+      "email": "masum.nishat21@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^8.2",
+    "illuminate/support": "^11.0|^12.0",
+    "illuminate/database": "^11.0|^12.0",
+    "illuminate/cache": "^11.0|^12.0",
+    "guzzlehttp/guzzle": "^7.0",
+    "google-gemini-php/laravel": "^2.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^9.0",
+    "pestphp/pest": "^3.0|^4.0",
+    "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+    "phpunit/phpunit": "^11.0|^12.0",
+    "laravel/pint": "^1.0",
+    "larastan/larastan": "^2.0",
+    "nunomaduro/collision": "^8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Masum\\AiTranslator\\": "src/"
     },
-    "require-dev": {
-        "orchestra/testbench": "^9.0",
-        "pestphp/pest": "^3.0|^4.0",
-        "pestphp/pest-plugin-laravel": "^3.0|^4.0",
-        "phpunit/phpunit": "^11.0|^12.0",
-        "laravel/pint": "^1.0",
-        "larastan/larastan": "^2.0",
-        "nunomaduro/collision": "^8.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "Masum\\AiTranslator\\": "src/"
-        },
-        "files": [
-            "src/Helpers/translation_helpers.php"
-        ]
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Masum\\AiTranslator\\Tests\\": "tests/",
-            "Masum\\AiTranslator\\Database\\Factories\\": "database/factories/"
-        }
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Masum\\AiTranslator\\AiTranslatorServiceProvider"
-            ]
-        }
-    },
-    "scripts": {
-        "test": "vendor/bin/pest",
-        "test:coverage": "vendor/bin/pest --coverage --min=80",
-        "test:unit": "vendor/bin/pest --group=unit",
-        "test:feature": "vendor/bin/pest --group=feature",
-        "analyse": "vendor/bin/phpstan analyse",
-        "format": "vendor/bin/pint",
-        "format:test": "vendor/bin/pint --test",
-        "quality": [
-            "@format:test",
-            "@analyse",
-            "@test"
-        ]
-    },
-    "config": {
-        "allow-plugins": {
-            "pestphp/pest-plugin": true
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "files": [
+      "src/Helpers/translation_helpers.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Masum\\AiTranslator\\Tests\\": "tests/",
+      "Masum\\AiTranslator\\Database\\Factories\\": "database/factories/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Masum\\AiTranslator\\AiTranslatorServiceProvider"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "vendor/bin/pest",
+    "test:coverage": "vendor/bin/pest --coverage --min=80",
+    "test:unit": "vendor/bin/pest --group=unit",
+    "test:feature": "vendor/bin/pest --group=feature",
+    "analyse": "vendor/bin/phpstan analyse",
+    "format": "vendor/bin/pint",
+    "format:test": "vendor/bin/pint --test",
+    "quality": [
+      "@format:test",
+      "@analyse",
+      "@test"
+    ]
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }

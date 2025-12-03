@@ -138,7 +138,7 @@ trait HasTranslations
             $sourceValue = __t($key, $group, '', $sourceLocale);
 
             if (!empty($sourceValue)) {
-                $service->autoTranslate(
+                $service->translate(
                     $key,
                     $sourceValue,
                     $sourceLocale,

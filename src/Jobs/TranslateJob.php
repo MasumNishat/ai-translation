@@ -60,53 +60,19 @@ class TranslateJob implements ShouldQueue
             ]);
 
             $results = [];
-
-            foreach ($this->targetLangs as $targetLang) {
-                try {
-                    // Get the language model
-                    $language = Language::where('code', $targetLang)->firstOrFail();
-
-                    // Translate using AI service
-                    $translatedValue = $service->translate(
-                        $this->value,
-                        $this->sourceLang,
-                        $targetLang
-                    );
-
-                    // Create or update translation
-                    $translation = Translation::updateOrCreate(
-                        [
-                            'key' => $this->key,
-                            'language_id' => $language->id,
-                        ],
-                        [
-                            'value' => $translatedValue,
-                            'group' => $this->group ?? 'general',
-                            'is_auto_translated' => true,
-                        ]
-                    );
-
-                    $results[$targetLang] = [
-                        'success' => true,
-                        'translation_id' => $translation->id,
-                        'value' => $translatedValue,
-                    ];
-
-                    Log::info("Translation successful for {$targetLang}", [
-                        'key' => $this->key,
-                        'translation_id' => $translation->id,
-                    ]);
-                } catch (\Exception $e) {
-                    $results[$targetLang] = [
-                        'success' => false,
-                        'error' => $e->getMessage(),
-                    ];
-
-                    Log::error("Translation failed for {$targetLang}", [
-                        'key' => $this->key,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+            try {
+                // Translate using AI service
+                $service->translate(
+                    $this->key,
+                    $this->value,
+                    $this->sourceLang,
+                    $this->targetLangs
+                );
+            } catch (\Exception $e) {
+                Log::error("Translation failed", [
+                    'key' => $this->key,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             // Dispatch completion event

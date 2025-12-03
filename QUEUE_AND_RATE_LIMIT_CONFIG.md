@@ -59,11 +59,7 @@ Location: `config/ai-translator.php`
     // Backoff strategy in seconds for retries
     'backoff' => [10, 30, 60], // 10s, 30s, 60s
 
-    // Enable job batching for bulk operations
-    'batch_enabled' => env('TRANSLATOR_BATCH_ENABLED', true),
 
-    // Batch size for splitting large operations
-    'batch_size' => env('TRANSLATOR_BATCH_SIZE', 50),
 ],
 ```
 
@@ -85,8 +81,6 @@ TRANSLATOR_QUEUE_NAME=translations
 TRANSLATOR_QUEUE_BULK_NAME=translations-bulk
 TRANSLATOR_QUEUE_TIMEOUT=120
 TRANSLATOR_QUEUE_RETRIES=3
-TRANSLATOR_BATCH_ENABLED=true
-TRANSLATOR_BATCH_SIZE=50
 
 # Redis Configuration (if using Redis)
 REDIS_HOST=127.0.0.1
@@ -291,8 +285,6 @@ TRANSLATOR_QUEUE_NAME=translations
 TRANSLATOR_QUEUE_BULK_NAME=translations-bulk
 TRANSLATOR_QUEUE_TIMEOUT=120
 TRANSLATOR_QUEUE_RETRIES=3
-TRANSLATOR_BATCH_ENABLED=true
-TRANSLATOR_BATCH_SIZE=50
 
 # Cache Configuration
 TRANSLATOR_CACHE_ENABLED=true

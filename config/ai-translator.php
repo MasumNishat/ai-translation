@@ -118,12 +118,6 @@ return [
 
         // Backoff strategy in seconds for retries
         'backoff' => [10, 30, 60], // 10s, 30s, 60s
-
-        // Enable job batching for bulk operations
-        'batch_enabled' => env('TRANSLATOR_BATCH_ENABLED', true),
-
-        // Batch size for splitting large operations
-        'batch_size' => env('TRANSLATOR_BATCH_SIZE', 50),
     ],
 
     /*
