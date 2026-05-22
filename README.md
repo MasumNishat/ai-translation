@@ -39,6 +39,7 @@ AI-powered Laravel translation package with Google Gemini API integration, smart
 - [API Key Priority](#api-key-priority) — How the Gemini API key is resolved (DB → Config → Env)
 - [Audit Trail](#audit-trail) — Full history of translation changes with user tracking
 - [Translation Groups](#translation-groups) — Organise translations by namespace or module
+- [Artisan Commands](#artisan-commands) — Full reference for all `translator:*` commands (stats, sync, clear-cache, export, import, translate-markdown)
 - [Advanced Features](#advanced-features) — Finding missing keys, clearing cache, and more
 - [Building a Custom Admin UI](#building-a-custom-admin-translation-manager) — How to build your own translation manager on top of this package
 - [Markdown File Translation](#markdown-file-translation) — Translate entire `.md` files (front matter + body) with one Artisan command
@@ -1295,6 +1296,124 @@ app()->setLocale('bn');
 // Or using helper function
 ai_set_language('bn');
 ```
+
+## Artisan Commands
+
+A quick reference for all commands provided by this package.
+
+| Command | Description |
+|---------|-------------|
+| `translator:stats` | Display translation coverage statistics |
+| `translator:sync` | Sync missing translations from the default language |
+| `translator:clear-cache` | Clear the translation cache |
+| `translator:export` | Export translations to a JSON file |
+| `translator:import` | Import translations from a JSON/CSV/PHP file |
+| `translator:translate-markdown` | Translate `.md` files into locale sub-directories |
+
+---
+
+### `translator:stats`
+
+Display translation coverage statistics across all languages.
+
+```bash
+# Show stats for all languages
+php artisan translator:stats
+
+# Show stats for a specific language
+php artisan translator:stats --language=bn
+
+# Show detailed per-group breakdown
+php artisan translator:stats --detailed
+php artisan translator:stats --language=bn --detailed
+```
+
+---
+
+### `translator:sync`
+
+Sync missing translations from the default language so every language has an entry for every key (untranslated entries are queued for AI translation via the queue worker).
+
+```bash
+# Sync all missing translations across all languages
+php artisan translator:sync
+
+# Sync a specific language only
+php artisan translator:sync --language=bn
+
+# Sync a specific group only
+php artisan translator:sync --group=home
+```
+
+---
+
+### `translator:clear-cache`
+
+Clear the translation cache. Useful after bulk edits or when testing config changes.
+
+```bash
+# Clear all translation caches
+php artisan translator:clear-cache
+
+# Clear cache for a specific language
+php artisan translator:clear-cache --language=bn
+
+# Clear cache for a specific group
+php artisan translator:clear-cache --group=home
+
+# Combine both
+php artisan translator:clear-cache --language=bn --group=home
+```
+
+---
+
+### `translator:export`
+
+Export translations to a JSON file for backup, review, or hand-off to a human translator.
+
+```bash
+# Export all translations
+php artisan translator:export translations.json
+
+# Export a specific language only
+php artisan translator:export translations.json --language=bn
+```
+
+---
+
+### `translator:import`
+
+Import translations from a file. Supports JSON, CSV, and PHP array formats.
+
+```bash
+# Import from JSON (default format)
+php artisan translator:import translations.json
+
+# Import from CSV
+php artisan translator:import translations.csv --format=csv
+
+# Import from a PHP array file
+php artisan translator:import translations.php --format=php
+```
+
+---
+
+### `translator:translate-markdown`
+
+Translate entire `.md` files — front matter and body — into locale sub-directories in a single Gemini API call. See the [Markdown File Translation](#markdown-file-translation) section for full details.
+
+```bash
+# Translate a whole directory to all active locales
+php artisan translator:translate-markdown feature-pages/
+
+# Translate to specific locales
+php artisan translator:translate-markdown feature-pages/ --locale=bn,fr,ar
+
+# Translate a single file
+php artisan translator:translate-markdown docs/guide.md --locale=bn
+```
+
+---
 
 ## Advanced Features
 
