@@ -1,6 +1,57 @@
 # Laravel AI Translator
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/masum/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/masum/laravel-ai-translator)
+[![Total Downloads](https://img.shields.io/packagist/dt/masum/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/masum/laravel-ai-translator)
+[![PHP Version](https://img.shields.io/packagist/php-v/masum/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/masum/laravel-ai-translator)
+[![License](https://img.shields.io/packagist/l/masum/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/masum/laravel-ai-translator)
+
 AI-powered Laravel translation package with Google Gemini API integration, smart caching, and automatic translation management.
+
+---
+
+## Table of Contents
+
+- [Features](#features) — What the package provides at a glance
+- [Requirements](#requirements) — PHP, Laravel, and API key prerequisites
+- [Installation](#installation) — Step-by-step setup guide
+  - [1. Install via Composer](#1-install-via-composer)
+  - [2. Publish Configuration](#2-publish-configuration)
+  - [3. Publish and Run Migrations](#3-publish-and-run-migrations)
+  - [4. Configure Environment](#4-configure-environment)
+  - [5. Add Languages](#5-add-languages)
+  - [6. Register Gates (Optional)](#6-register-gates-optional)
+  - [7. Add Middleware (Optional)](#7-add-middleware-optional)
+- [Configuration](#configuration) — All available config options explained
+- [Transparent `__()` Override](#transparent---override-zero-blade-changes) — Drop-in AI translation with no Blade changes required
+- [Middleware & Locale Detection](#middleware) — How language is detected, persisted, and switched per request
+- [Queue Configuration](#queue-configuration) — Async translation processing with database or Redis queues
+- [Rate Limiting](#rate-limiting) — Protect the Gemini API from abuse with configurable limits
+- [Usage](#usage) — How to translate strings, use helpers, and integrate with models
+  - [Basic Translation](#basic-translation) — `__()`, `trans()`, and `Translation::get()`
+  - [Auto-Translate with AI](#auto-translate-with-ai) — Trigger AI translation on demand
+  - [Helper Functions](#using-helper-functions) — Full reference of all helper functions (numbers, time, language, etc.)
+  - [Using with Models](#using-with-models) — Translate model attributes automatically
+- [API Reference](#api-endpoints) — RESTful endpoints for language and translation management
+  - [Endpoints](#api-endpoints) — Full list of available routes
+  - [Examples](#api-examples) — cURL and request examples
+- [Smart Caching](#smart-caching-flow) — 3-tier caching architecture and invalidation strategy
+- [Permission Gates](#permission-gates) — Control access to translation management features
+- [API Key Priority](#api-key-priority) — How the Gemini API key is resolved (DB → Config → Env)
+- [Audit Trail](#audit-trail) — Full history of translation changes with user tracking
+- [Translation Groups](#translation-groups) — Organise translations by namespace or module
+- [Advanced Features](#advanced-features) — Finding missing keys, clearing cache, and more
+- [Building a Custom Admin UI](#building-a-custom-admin-translation-manager) — How to build your own translation manager on top of this package
+- [Markdown File Translation](#markdown-file-translation) — Translate entire `.md` files (front matter + body) with one Artisan command
+- [API Quota Caution](#️-api-quota-caution-free-tier) — Free tier limits, call counts, and how to stay within quota
+- [Troubleshooting](#troubleshooting) — Common issues and fixes
+- [Testing](#testing)
+- [Changelog](#changelog)
+- [Contributing](#contributing)
+- [License](#license)
+- [Credits](#credits)
+- [Support](#support)
+
+---
 
 ## Features
 
@@ -27,7 +78,7 @@ AI-powered Laravel translation package with Google Gemini API integration, smart
 
 - PHP 8.2 or higher
 - Laravel 11, 12, or 13
-- Google Gemini API key
+- Google Gemini API key — get one free at [aistudio.google.com](https://aistudio.google.com)
 - `google-gemini-php/laravel` package (pulled in automatically)
 
 ## Installation
