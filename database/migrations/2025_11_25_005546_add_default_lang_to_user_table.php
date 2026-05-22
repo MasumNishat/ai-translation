@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('local')->nullable()->constrained('languages', "code");
+            $table->string('local')->nullable();
+            $table->foreign('local')->references('code')->on('languages')->nullOnDelete();
         });
     }
 
@@ -22,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeignId('local');
+            $table->dropForeign(['local']);
+            $table->dropColumn('local');
         });
     }
 };

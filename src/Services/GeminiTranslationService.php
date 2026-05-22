@@ -6,20 +6,23 @@ use Gemini\Data\GenerationConfig;
 use Gemini\Data\Schema;
 use Gemini\Enums\DataType;
 use Gemini\Enums\ResponseMimeType;
+use Gemini\Laravel\Facades\Gemini;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Gemini\Laravel\Facades\Gemini;
+use Masum\AiTranslator\Exceptions\QuotaExceededException;
 use Masum\AiTranslator\Models\PackageSetting;
 
 class GeminiTranslationService
 {
     protected Client $client;
+
     protected int $maxRetries;
+
     protected int $timeout;
 
     public function __construct()
     {
-        $this->client = new Client();
+        $this->client = new Client;
         $this->maxRetries = config('ai-translator.gemini.max_retries', 3);
         $this->timeout = config('ai-translator.gemini.timeout', 30);
     }
@@ -34,31 +37,55 @@ class GeminiTranslationService
      * @return array Array of translations ['bn' => 'translated text', 'fr' => '...']
      */
     public function translate(
-        string | array $text,
+        string|array $text,
         string $sourceLang,
         array $targetLangs,
         array $context = []
     ): array {
         $apiKey = $this->getApiKey();
 
-        if (!$apiKey) {
+        if (! $apiKey) {
             throw new \Exception('Gemini API key not configured. Please set it in database, config, or .env file.');
         }
 
         $translations = [];
         try {
-            $prompt = $this->buildBatchTranslationPrompt(is_array($text)? $text : [$text], $sourceLang, $targetLangs);
-            $translations = $this->callGeminiApi($prompt, $apiKey);
+            $texts = is_array($text) ? $text : [$text];
+            $prompt = $this->buildBatchTranslationPrompt($texts, $sourceLang, $targetLangs);
+            $raw = $this->callGeminiApi($prompt, $apiKey);
 
+            if (count($targetLangs) === 1) {
+                // Multiple texts → one target language.
+                // Each raw item corresponds to one input text (by position).
+                // Return all translated values as an ordered array so the caller
+                // can map them back to the original keys by index.
+                $lang = $targetLangs[0];
+                $translations[$lang] = array_values(array_map(
+                    fn ($item) => $item['translated'] ?? '',
+                    $raw
+                ));
+            } else {
+                // One text → multiple target languages.
+                // Each raw item corresponds to one target language (by position).
+                foreach ($raw as $index => $item) {
+                    if (isset($item['translated'], $targetLangs[$index])) {
+                        $translations[$targetLangs[$index]] = $item['translated'];
+                    }
+                }
+            }
+        } catch (QuotaExceededException $e) {
+            // Re-throw so callers (MarkdownTranslationService, BatchTranslateJob)
+            // can apply the correct retry strategy.
+            throw $e;
         } catch (\Exception $e) {
             logger()->error('Failed to translate text', [
                 'text' => $text,
                 'source' => $sourceLang,
-                'target' => implode(", ", $targetLangs),
+                'target' => implode(', ', $targetLangs),
                 'error' => $e->getMessage(),
             ]);
-
         }
+
         return $translations;
     }
 
@@ -77,7 +104,7 @@ class GeminiTranslationService
     ): array {
         $apiKey = $this->getApiKey();
 
-        if (!$apiKey) {
+        if (! $apiKey) {
             throw new \Exception('Gemini API key not configured.');
         }
 
@@ -98,7 +125,7 @@ class GeminiTranslationService
 
                     if (is_array($translations)) {
                         foreach ($translations as $key => $translation) {
-                            if (!isset($results[$key])) {
+                            if (! isset($results[$key])) {
                                 $results[$key] = [];
                             }
                             $results[$key][$targetLang] = $translation;
@@ -126,7 +153,7 @@ class GeminiTranslationService
     {
         $apiKey = $this->getApiKey();
 
-        if (!$apiKey) {
+        if (! $apiKey) {
             throw new \Exception('Gemini API key not configured.');
         }
 
@@ -166,6 +193,7 @@ class GeminiTranslationService
         if ($configKey) {
             return $configKey;
         }
+
         // 3. Check environment variable
         return env('GEMINI_API_KEY');
     }
@@ -184,29 +212,50 @@ class GeminiTranslationService
                 return $body;
             }
             throw new \Exception('Invalid response format from Gemini API');
-        } catch (RequestException $e) {
-            // Retry logic
+        } catch (\Exception $e) {
+            // Works for any exception type — Guzzle RequestException, SDK-specific, etc.
+            $errorMessage = $e->getMessage();
+            $statusCode = 0;
+
+            if ($e instanceof RequestException && $e->hasResponse()) {
+                $statusCode = $e->getResponse()->getStatusCode();
+                try {
+                    $errorData = json_decode((string) $e->getResponse()->getBody(), true);
+                    if (isset($errorData['error']['message'])) {
+                        $errorMessage = $errorData['error']['message'];
+                    }
+                } catch (\Throwable) {
+                    // Body already consumed — fall back to exception message.
+                }
+            }
+
+            // Never retry quota / rate-limit errors — each retry burns more quota.
+            // Throw a typed exception so callers can parse the retry-after duration.
+            if ($statusCode === 429 || $this->isQuotaError($errorMessage)) {
+                throw QuotaExceededException::fromMessage($errorMessage);
+            }
+
+            // Retry only transient errors (5xx, network timeouts) with exponential backoff.
             if ($attempt < $this->maxRetries) {
-                // Exponential backoff: 1s, 2s, 4s
                 sleep(pow(2, $attempt - 1));
 
                 return $this->callGeminiApi($prompt, $apiKey, $attempt + 1);
             }
 
-            // Get error details
-            $errorMessage = $e->getMessage();
-
-            if ($e->hasResponse()) {
-                $errorBody = $e->getResponse()->getBody()->getContents();
-                $errorData = json_decode($errorBody, true);
-
-                if (isset($errorData['error']['message'])) {
-                    $errorMessage = $errorData['error']['message'];
-                }
-            }
-
             throw new \Exception("Gemini API call failed after {$this->maxRetries} attempts: {$errorMessage}");
         }
+    }
+
+    /**
+     * Returns true if the error message indicates a quota or rate-limit rejection.
+     * Used as a fallback when the HTTP status code is unavailable.
+     */
+    protected function isQuotaError(string $message): bool
+    {
+        return str_contains($message, 'quota') ||
+               str_contains($message, 'RESOURCE_EXHAUSTED') ||
+               str_contains($message, 'rate limit') ||
+               str_contains($message, 'Too Many Requests');
     }
 
     /**
@@ -218,7 +267,8 @@ class GeminiTranslationService
         array $targetLang
     ): string {
         $textsJson = json_encode($texts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        $targetLang = implode(", ", $targetLang);
+        $targetLang = implode(', ', $targetLang);
+
         return <<<PROMPT
 You are a professional translator. Translate the following texts from local {$sourceLang} to local(s) {$targetLang}.
 Local is ISO 639-1 language code (2 letters, lowercase) like en, bn, fr, es, de, ar, hi, zh, ja, ko etc.
@@ -231,7 +281,7 @@ Requirements:
 - Maintain the same keys as input
 - Preserve formatting and placeholders in the texts
 - Ensure consistent terminology across all translations
-- Preserve placeholders like {variable}, {name}, etc. exactly
+- Preserve placeholders exactly — both :variable (colon-prefix Laravel style) and {variable} (brace style) must be kept character-for-character unchanged
 - Keep HTML tags and formatting: <b>, <i>, <a href="...">
 - Maintain technical terms consistently
 - Return ONLY the JSON object, no other text
@@ -243,11 +293,19 @@ PROMPT;
 
     private function promptJson($prompt, $model): string
     {
-        config(['gemini.api_key' => $this->getApiKey()]);
-        return Gemini::generativeModel(model: $model)
+        $apiKey = $this->getApiKey();
+        config(['gemini.api_key' => $apiKey]);
+
+        logger()->debug('Gemini request', [
+            'model' => $model,
+            'api_key' => $apiKey ? substr($apiKey, 0, 8).'...' : null,
+            'prompt' => $prompt,
+        ]);
+
+        $responseText = Gemini::generativeModel(model: $model)
             ->withGenerationConfig(
                 generationConfig: new GenerationConfig(
-                    maxOutputTokens: 2048,
+                    maxOutputTokens: config('ai-translator.gemini.max_output_tokens', 4096),
                     temperature: 0.3,
                     responseMimeType: ResponseMimeType::APPLICATION_JSON,
                     responseSchema: new Schema(
@@ -265,6 +323,10 @@ PROMPT;
             )
             ->generateContent($prompt)
             ->text();
+
+        logger()->debug('Gemini response', ['response' => $responseText]);
+
+        return $responseText;
     }
 
     /**
@@ -282,5 +344,4 @@ Text:
 Language code:
 PROMPT;
     }
-
 }

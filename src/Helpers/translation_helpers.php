@@ -486,7 +486,7 @@ if (!function_exists('ai_set_language')) {
         }
 
         app()->setLocale($languageCode);
-        session(['language' => $languageCode]);
+        session([config('ai-translator.detection.session_key', 'locale') => $languageCode]);
 
         return true;
     }

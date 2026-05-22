@@ -118,7 +118,7 @@ class Translation extends Model
      */
     public function scopeByKey($query, string $key)
     {
-        return $query->where('key', $key);
+        return $query->where('key', md5($key));
     }
 
     /**
@@ -195,7 +195,7 @@ class Translation extends Model
 
         if ($language) {
             $translation = self::where('language_id', $language->id)
-                ->where('key', $key)
+                ->where('key', md5($key))
                 ->when($group !== null, fn ($q) => $q->where('group', $group))
                 ->when($group === null, fn ($q) => $q->whereNull('group'))
                 ->where('is_active', true)
@@ -209,8 +209,11 @@ class Translation extends Model
             }
         }
 
-        // Step 3: Try AI translation if enabled
-        if (config('ai-translator.translation.auto_translate_enabled', true)) {
+        // Step 3: Try AI translation if enabled and not deferred to AiTranslator batch.
+        // When called via AiTranslator (default = $key), skip inline AI — the translator
+        // collects missing keys and batch-translates them after the response is sent.
+        $isDeferred = $default === $key;
+        if (! $isDeferred && config('ai-translator.translation.auto_translate_enabled', true)) {
             $aiTranslation = self::translateWithAi($key, $languageCode, $group, $default);
 
             if ($aiTranslation !== null) {
@@ -218,11 +221,11 @@ class Translation extends Model
             }
         }
 
-        // Step 4: Fallback chain
+        // Step 4: Fallback chain — pass $key as default to prevent translateWithAi from recursing.
         $fallbackLocale = config('ai-translator.translation.fallback_locale', 'en');
 
         if ($languageCode !== $fallbackLocale) {
-            $fallbackValue = self::get($key, $fallbackLocale, $group, null);
+            $fallbackValue = self::get($key, $fallbackLocale, $group, $key);
 
             if ($fallbackValue !== $key) {
                 return $fallbackValue;
@@ -254,7 +257,7 @@ class Translation extends Model
             [
                 'language_id' => $language->id,
                 'group' => $group,
-                'key' => $key,
+                'key' => md5($key),
             ],
             [
                 'value' => $value,
@@ -278,12 +281,19 @@ class Translation extends Model
         ?string $group,
         ?string $sourceText
     ): ?string {
+        $fallbackLocale = config('ai-translator.translation.fallback_locale', 'en');
+
+        // Never translate the fallback locale into itself — pointless and causes recursion.
+        if ($targetLanguage === $fallbackLocale) {
+            return null;
+        }
+
         // Get source text if not provided
         if ($sourceText === null) {
-            $fallbackLocale = config('ai-translator.translation.fallback_locale', 'en');
-            $sourceText = self::get($key, $fallbackLocale, $group, null);
+            // Pass $key as the default so the recursive call always terminates.
+            $sourceText = self::get($key, $fallbackLocale, $group, $key);
 
-            // If source text is same as key, nothing to translate
+            // If we got the bare key back, there is no source text to translate.
             if ($sourceText === $key) {
                 return null;
             }
@@ -310,7 +320,7 @@ class Translation extends Model
                     $translation = self::create([
                         'language_id' => $language->id,
                         'group' => $group,
-                        'key' => $key,
+                        'key' => md5($key),
                         'value' => $translatedValue,
                         'is_active' => true,
                         'is_auto_translated' => true,
@@ -414,13 +424,17 @@ class Translation extends Model
 
     /**
      * Get cache key for a translation.
+     *
+     * The translation key can be an arbitrarily long sentence (used as its own
+     * English source text), so we hash it with MD5 to guarantee the resulting
+     * cache key never exceeds the database cache column limit (varchar 255).
      */
     protected static function getCacheKey(string $key, string $languageCode, ?string $group = null): string
     {
-        $prefix = config('ai-translator.translation.cache_prefix', 'ai_translator');
+        $prefix    = config('ai-translator.translation.cache_prefix', 'ai_translator');
         $groupPart = $group ? ".{$group}" : '';
 
-        return "{$prefix}{$groupPart}.{$key}.{$languageCode}";
+        return "{$prefix}{$groupPart}." . md5($key) . ".{$languageCode}";
     }
 
     /**

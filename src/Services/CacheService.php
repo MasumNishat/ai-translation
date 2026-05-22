@@ -182,7 +182,8 @@ class CacheService
             $parts[] = $group;
         }
 
-        $parts[] = $key;
+        // Hash the key so long sentences never exceed varchar(255) on the cache table.
+        $parts[] = md5($key);
         $parts[] = $locale;
 
         return implode('.', $parts);

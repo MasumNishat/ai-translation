@@ -112,11 +112,20 @@ class Language extends Model
      */
     public static function getActive(): \Illuminate\Support\Collection
     {
-        return Cache::remember(
-            self::getCacheKey('active'),
-            config('ai-translator.translation.cache_ttl', 3600),
-            fn () => self::active()->orderBy('name')->get()
-        );
+        $key = self::getCacheKey('active');
+        $ttl = config('ai-translator.translation.cache_ttl', 3600);
+        $cached = Cache::get($key);
+
+        if ($cached instanceof \Illuminate\Support\Collection) {
+            return $cached;
+        }
+
+        // Stale or invalid cached value — re-fetch and overwrite.
+        Cache::forget($key);
+        $result = self::active()->orderBy('name')->get();
+        Cache::put($key, $result, $ttl);
+
+        return $result;
     }
 
     /**
@@ -124,11 +133,19 @@ class Language extends Model
      */
     public static function getDefault(): ?self
     {
-        return Cache::remember(
-            self::getCacheKey('default'),
-            config('ai-translator.translation.cache_ttl', 3600),
-            fn () => self::where('is_default', true)->first()
-        );
+        $key = self::getCacheKey('default');
+        $ttl = config('ai-translator.translation.cache_ttl', 3600);
+        $cached = Cache::get($key);
+
+        if ($cached instanceof self) {
+            return $cached;
+        }
+
+        Cache::forget($key);
+        $result = self::where('is_default', true)->first();
+        Cache::put($key, $result, $ttl);
+
+        return $result;
     }
 
     /**
@@ -136,11 +153,19 @@ class Language extends Model
      */
     public static function getByCode(string $code): ?self
     {
-        return Cache::remember(
-            self::getCacheKey("code.{$code}"),
-            config('ai-translator.translation.cache_ttl', 3600),
-            fn () => self::where('code', $code)->first()
-        );
+        $key = self::getCacheKey("code.{$code}");
+        $ttl = config('ai-translator.translation.cache_ttl', 3600);
+        $cached = Cache::get($key);
+
+        if ($cached instanceof self) {
+            return $cached;
+        }
+
+        Cache::forget($key);
+        $result = self::where('code', $code)->first();
+        Cache::put($key, $result, $ttl);
+
+        return $result;
     }
 
     /**
