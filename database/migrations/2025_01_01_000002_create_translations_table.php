@@ -32,7 +32,7 @@ return new class extends Migration
         });
 
         if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE translations ADD FULLTEXT INDEX idx_translations_fulltext (key, value)');
+            DB::statement('ALTER TABLE translations ADD FULLTEXT INDEX idx_translations_fulltext (`key`, value)');
         }
     }
 
