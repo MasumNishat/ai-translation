@@ -244,7 +244,8 @@ class Translation extends Model
         string $value,
         ?string $languageCode = null,
         ?string $group = null,
-        ?int $userId = null
+        ?int $userId = null,
+        bool $isAutoTranslated = false
     ): self {
         $languageCode = $languageCode ?? app()->getLocale();
         $language = Language::getByCode($languageCode);
@@ -263,6 +264,7 @@ class Translation extends Model
                 'value' => $value,
                 'translated_by_user_id' => $userId ?? auth()->id(),
                 'is_active' => true,
+                'is_auto_translated' => $isAutoTranslated,
             ]
         );
 
@@ -407,7 +409,7 @@ class Translation extends Model
      */
     protected function recordHistory(string $changeType): void
     {
-        if (!config('ai-translator.audit.enabled', true)) {
+        if ($changeType === 'deleted' || !config('ai-translator.audit.enabled', true)) {
             return;
         }
 

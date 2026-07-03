@@ -59,7 +59,7 @@ class ClearTranslationCacheCommand extends Command
     protected function clearAllCache(): int
     {
         // Clear tagged cache if supported
-        if (config('cache.default') !== 'file') {
+        if (in_array(config('cache.default'), ['redis', 'memcached', 'array'])) {
             Cache::tags(['translations'])->flush();
             $this->info('✓ Cleared all tagged translation caches');
         }
@@ -94,7 +94,7 @@ class ClearTranslationCacheCommand extends Command
             return Command::FAILURE;
         }
 
-        if (config('cache.default') !== 'file') {
+        if (in_array(config('cache.default'), ['redis', 'memcached', 'array'])) {
             if ($group) {
                 Cache::tags(['translations', "lang:{$languageCode}", "group:{$group}"])->flush();
             } else {
@@ -120,7 +120,7 @@ class ClearTranslationCacheCommand extends Command
      */
     protected function clearGroupCache(string $group): int
     {
-        if (config('cache.default') !== 'file') {
+        if (in_array(config('cache.default'), ['redis', 'memcached', 'array'])) {
             Cache::tags(['translations', "group:{$group}"])->flush();
         } else {
             Cache::flush();
